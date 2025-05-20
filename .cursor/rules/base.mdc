@@ -1,0 +1,53 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Goal of this project
+FeSi の実験価電子密度 (ρ_exp) から、Fe 局所 4s+4p+3d の 1-RDM (γ) を
+『SDP 最小二乗』で再構成する。
+
+
+# Steps
+1. src/pre_processing/import_settings.py
+   - input: data/input/settings.txt
+   
+
+2. extract_radial_from_vasp.py
+   - AECCAR0/2 から l=0,1,2 の ρ_l(r) を角度分解
+   - R_l(r) = sqrt(ρ_l/4π) を 0–r_cut のテーブルに
+   - 外挿スケール α をパラメータ化 (初期 α=1.00)
+
+3. fit_gamma_sdp.py
+   - 入力: density_preprocessed, radial_table, α
+   - デザイン行列 B(i,μν)=χ_μχ_ν
+   - cvxpy + MOSEK で
+        min_γ ‖W^{1/2}(Bγ−ρ_exp)‖² + λ‖γ‖²
+        s.t. γ⪰0 , Trγ = N_loc(=7.0)
+   - 出力: γ.npy , rms_error
+
+4. refine_alpha.py
+   - 粗スキャン α∈[0.95,1.05] (0.5% step) の rms 最小を取り、
+     Brent 法で α 最終値 (tol=1e-3) を決定
+   - γ_final.npy, α_final.json を保存
+
+5. analyze_gamma.py
+   - 自然占有数 n_k、混成角 |θ| を CSV / 図にする
+
+# コーディング指針
+* Python 3.11  /  numpy, scipy, h5py, cvxpy, pymatgen
+* 外部依存 (MOSEK) は try-import → fallback SCS
+* B 行列生成は Numba JIT で行う
+* すべての関数に type hints・docstring を付与
+* I/O 形式: density_preprocessed.npz (r,ρ,σ), radial_table.npz (l,r,R_l)
+
+# 出力検証
+* rms_error ≤ 1.5×mean(σ)
+* γ PSD: min(eigs) > −1e−5
+
+
+
+
+
+
+* Trγ = 7.0±1e
