@@ -2,12 +2,16 @@ from prefect import task
 import numpy as np
 from src.tasks.pre_processing.settings import Settings
 import math
+import os
 
 @task(name="load tmp_data")
 def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, int], float]:
     """
     load xplor file
     """
+
+    if os.path.exists("data_depicted.npy"):
+        return np.load("data_depicted.npy", allow_pickle=True)
     v = np.zeros(3, dtype=int)
     v_max = np.zeros(3, dtype=int)
     v_min = np.zeros(3, dtype=int)
@@ -89,5 +93,7 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
                         for z_idx in range(math.floor(z_idx_float), math.ceil(z_idx_float)):
                             weight = abs((x_idx_float - x_idx) * (y_idx_float - y_idx) * (z_idx_float - z_idx))
                             data[i, j, k] += tmp_data[x_idx % v[0], y_idx % v[1], z_idx % v[2]] * weight
+
+    np.save("data_depicted.npy", data, allow_pickle=True)
 
     return data
