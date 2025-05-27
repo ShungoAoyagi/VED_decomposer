@@ -1,7 +1,8 @@
 import numpy as np
 from src.tasks.pre_processing.settings import Settings
 from src.utils import ErrorHandler, ErrorCode, ErrorLevel
-from src.helpers import spherical_harmonics
+from src.helpers import spherical_harmonics, Constants
+from scipy.special import genlaguerre
 
 def calc_orb(n: int, ell: int, m: int, output_path: str, settings: Settings) -> np.ndarray:
     n_list = [1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]
@@ -56,4 +57,20 @@ def calc_R_with_STO(n_list: list[int], c_list: list[float], z_list: list[float],
         res += c * radial_part
         
     return res
+
+def calc_R_with_Zeff(n: int, ell: int, z: float, r: float) -> float:
+    """
+    Calculate the radial part of Slater-type orbital with effective nuclear charge.
+    
+    Args:
+        n: Principal quantum number
+        ell: Angular momentum quantum number
+        z: Effective nuclear charge
+        r: Radial distance
         
+    Returns:
+        Value of the radial part of STO at the given r
+    """
+    rho = 2.0 * z * r / (n * Constants.a0_angstrom)
+    L = genlaguerre(n - ell - 1, 2 * ell + 1)(rho)
+    return rho ** ell * np.exp(-rho / 2.0) * L
