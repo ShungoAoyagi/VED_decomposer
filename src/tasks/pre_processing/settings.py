@@ -28,6 +28,7 @@ class Settings:
     phi_mesh: int = 32 # mesh size of phi
     r_max: float = 1.0 # Å unit
     basis_set: list[list[float]] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    d_min: float = 0.28 # Å unit
 
     def convert_orbital_set(self) -> list[tuple[int, int]]:
         for orb in self.orbital_set:
