@@ -1,4 +1,7 @@
-gridSize    0.02
-gridNumber  100
-dMax        0.28
-orbital     3d 4s 4p
+gridSize: 0.02
+gridNumber: 100
+d_min: 0.28
+orbital: ["3d", "4s", "4p"]
+center: [0.14356, 0.14356, 0.14356]
+r_max: 1.0
+basis_set: [[1.0, 1.0, 1.0], [1.0, -1.0, 0.0], [1.0, 1.0, -2.0]]

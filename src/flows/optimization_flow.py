@@ -17,7 +17,7 @@ def optimization_pipeline(
 ):
     # 設定の読み込み
     if config_path is None:
-        config_path = "config/config.yaml"
+        config_path = "config/settings.yaml"
     
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
@@ -29,15 +29,18 @@ def optimization_pipeline(
     
     # 出力ディレクトリの作成
     os.makedirs(output_dir, exist_ok=True)
+
+    # load settings
+    settings = import_settings(config_path)
     
     # パラメータの取得
+    # will be changed
     initial_params = np.array(config.get("initial_params", [0.1, 0.1, 0.1]))
     # optimization_method = config.get("optimization_method", "BFGS")
     optimization_options = config.get("optimization_options", {})
     
-    # データ読み込み
-    settings = import_settings(config_path)
-    data = load_data(data_path)
+    # load data
+    data = load_data(data_path, settings)
 
     # 孤立原子での軌道の計算
     Zeff = calculate_Zeff(data)

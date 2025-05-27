@@ -1,6 +1,7 @@
 from prefect import task
 import yaml
 from src.utils import CustomError, ErrorHandler, ErrorLevel, ErrorCode
+import numpy as np
 
 orbital_magnetic_number = {
     "s": 0,
@@ -149,6 +150,14 @@ class Settings:
                         break
                 if flag:
                     self.basis_set = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+                else:
+                    for i in range(3):
+                        for j in range(3):
+                            self.basis_set[i][j] = float(self.basis_set[i][j])
+
+                    for i in range(3):
+                        for j in range(3):
+                            self.basis_set[i][j] = self.basis_set[i][j] / np.linalg.norm(self.basis_set[i])
 
 @task(name="import settings")
 def import_settings(setting_path: str) -> Settings:
