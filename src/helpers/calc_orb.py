@@ -135,7 +135,7 @@ def find_ncz_list(n_principal: int, ell: int, settings: Settings) -> tuple[bool,
                 
     return flag, n_list_out, c_list_out, z_list_out
 
-def calc_orb(n: int, ell: int, m: int, z: float, settings: Settings) -> tuple[np.ndarray, np.ndarray]:
+def calc_orb(n: int, ell: int, m: int, z_before: float, settings: Settings) -> tuple[float, np.ndarray]:
     has_list, n_list, c_list, z_list = find_ncz_list(n, ell, settings)
     
     if len(n_list) != len(c_list) or len(n_list) != len(z_list):
@@ -152,7 +152,7 @@ def calc_orb(n: int, ell: int, m: int, z: float, settings: Settings) -> tuple[np
     r_max = settings.r_max
     psi_list = np.zeros(r_mesh * theta_mesh * phi_mesh)
     psi_list = np.reshape(psi_list, (r_mesh, theta_mesh, phi_mesh))
-    z = z
+    z = z_before
 
     if not has_list and z == -1:
         z = calc_Zeff(n, settings)
@@ -168,7 +168,7 @@ def calc_orb(n: int, ell: int, m: int, z: float, settings: Settings) -> tuple[np
                 else:
                     psi_list[i, j, k] = calc_R_with_Zeff(n, ell, z, i, j, k, r_max) * sph
 
-    return psi_list
+    return z, psi_list
 
 def calc_R_with_STO(n_list: list[int], c_list: list[float], z_list: list[float], r: float) -> float:
     """

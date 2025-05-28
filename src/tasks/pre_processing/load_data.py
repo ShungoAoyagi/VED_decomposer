@@ -10,8 +10,8 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
     load xplor file
     """
 
-    if os.path.exists("data_depicted.npy"):
-        return np.load("data_depicted.npy", allow_pickle=True)
+    if os.path.exists("cache/data_depicted.npy"):
+        return np.load("cache/data_depicted.npy", allow_pickle=True)
     v = np.zeros(3, dtype=int)
     v_max = np.zeros(3, dtype=int)
     v_min = np.zeros(3, dtype=int)
@@ -94,6 +94,6 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
                             weight = abs((x_idx_float - x_idx) * (y_idx_float - y_idx) * (z_idx_float - z_idx))
                             data[i, j, k] += tmp_data[x_idx % v[0], y_idx % v[1], z_idx % v[2]] * weight
 
-    np.save("data_depicted.npy", data, allow_pickle=True)
+    np.save("cache/data_depicted.npy", data, allow_pickle=True)
 
     return data
