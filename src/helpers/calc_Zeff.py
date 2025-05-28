@@ -1,3 +1,5 @@
+from src.tasks.pre_processing.settings import Settings
+
 # 簡易 Slater 計算（4p 電子を仮定した Fe の例）
 Z = 26                               # 原子番号
 conf = {
@@ -13,7 +15,7 @@ weights = {
     2: 1.00           # n-2 以下は一律 1.00
 }
 
-def zeff(nsorb):
+def calc_Zeff(nsorb: int, settings: Settings):
     n = int(nsorb[0])
     l = nsorb[1]                      # 's','p','d','f'
     if l not in 'sp':
