@@ -1,109 +1,88 @@
 import numpy as np
-from numba import jit
 from src.tasks.pre_processing.settings import Settings
-
-@jit(nopython=True)
-def _calculate_fourier_transform_parts(
-    f_complex: np.ndarray,
-    r_mesh: int,
-    r_max: float,
-    theta_mesh: int,
-    phi_mesh: int,
-    k_list_np: np.ndarray
-) -> np.ndarray:
-    """
-    Numba JITコンパイル用の内部関数。
-    フーリエ係数の計算と逆変換によるフィルタリング済み波動関数の再構築を行う。
-    """
-    r_step = r_max / r_mesh
-    theta_step = np.pi / theta_mesh
-    phi_step = 2 * np.pi / phi_mesh
-
-    num_k_points = k_list_np.shape[0]
-    F_k_array = np.zeros(num_k_points, dtype=np.complex128)
-
-    # F_k の計算
-    for idx in range(num_k_points):
-        k_x, k_y, k_z = k_list_np[idx, 0], k_list_np[idx, 1], k_list_np[idx, 2]
-        current_F_k = 0j
-        for i in range(r_mesh):
-            for j in range(theta_mesh):
-                for l_idx in range(phi_mesh): # lがループ変数として使われているためl_idxに変更
-                    r_val = i * r_step
-                    theta_val = j * theta_step
-                    phi_val = l_idx * phi_step # l_idxを使用
-                    x = r_val * np.sin(theta_val) * np.cos(phi_val)
-                    y = r_val * np.sin(theta_val) * np.sin(phi_val)
-                    z = r_val * np.cos(theta_val)
-                    current_F_k += f_complex[i, j, l_idx] * np.exp(-1j * (k_x * x + k_y * y + k_z * z))
-        F_k_array[idx] = current_F_k
-
-    # f_filtered の計算
-    f_filtered = np.zeros((r_mesh, theta_mesh, phi_mesh), dtype=np.complex128)
-    for i in range(r_mesh):
-        for j in range(theta_mesh):
-            for l_idx in range(phi_mesh): # l_idxを使用
-                r_val = i * r_step
-                theta_val = j * theta_step
-                phi_val = l_idx * phi_step # l_idxを使用
-                x = r_val * np.sin(theta_val) * np.cos(phi_val)
-                y = r_val * np.sin(theta_val) * np.sin(phi_val)
-                z = r_val * np.cos(theta_val)
-                val = 0j
-                for idx in range(num_k_points):
-                    k_x, k_y, k_z = k_list_np[idx, 0], k_list_np[idx, 1], k_list_np[idx, 2]
-                    val += F_k_array[idx] * np.exp(1j * (k_x * x + k_y * y + k_z * z))
-                f_filtered[i, j, l_idx] = val # l_idxを使用
-    
-    return f_filtered
 
 def fourier_truncation(f: np.ndarray, settings: Settings) -> np.ndarray:
     """
-    Calculate the wavefunction f_filtered by the Fourier truncation method.
-    Numba JITを使用して高速化されています。
+    Calculate the wavefunction f_filtered by the Fourier truncation method using FFT.
 
     Args:
-        f: The wavefunction to be truncated.
-        settings: The settings of the simulation.
+        f: The 3D wavefunction to be truncated. Assumed to be a real-valued numpy array
+           representing the function on a regular grid.
+        settings: The settings of the simulation, containing r_max, d_min,
+                  and mesh sizes (r_mesh, theta_mesh, phi_mesh are interpreted as Nx, Ny, Nz).
 
     Returns:
-        The wavefunction f_filtered.
+        The filtered wavefunction f_filtered as a real-valued numpy array.
     """
-    r_mesh = settings.r_mesh
-    r_max = settings.r_max
-    theta_mesh = settings.theta_mesh
-    phi_mesh = settings.phi_mesh
-    d_min = settings.d_min
+    if not isinstance(f, np.ndarray) or f.ndim != 3:
+        raise ValueError("Input wavefunction f must be a 3D numpy array.")
+    if not np.isrealobj(f):
+        # If f is complex, proceed, but the output will be its real part.
+        # Consider if a warning or different handling is needed for complex input.
+        pass
 
-    # k_list の生成 (この部分はPythonレベルで実行)
-    k_max_abs = int(2 * np.pi / d_min) # k_maxだと関数名と衝突するため変更
-    
-    _k_list_builder = []
-    # ループ変数が外側のスコープと衝突しないように変更 (i, j, k -> ki, kj, kk)
-    for kk_val in range(2 * k_max_abs + 1):
-        for kj_val in range(2 * k_max_abs + 1):
-            for ki_val in range(2 * k_max_abs + 1):
-                kx = ki_val - k_max_abs
-                ky = kj_val - k_max_abs
-                kz = kk_val - k_max_abs
-                if kx**2 + ky**2 + kz**2 <= k_max_abs**2:
-                    _k_list_builder.append((kx, ky, kz))
-    
-    if not _k_list_builder: # k_listが空の場合
-        # d_minが非常に小さい場合など、k_listが空になることがある。
-        # その場合、入力fの形状でゼロ（複素数）を返す。
-        return np.zeros_like(f, dtype=np.complex128)
+    # Grid dimensions from input array shape
+    nx, ny, nz = f.shape
 
-    k_list_np = np.array(_k_list_builder, dtype=np.int64)
+    # For simplicity, we assume the input f is defined on a Cartesian grid.
+    # The original code used spherical coordinates (r, theta, phi meshes).
+    # For a direct FFT approach on a Cartesian grid, we interpret settings
+    # related to r_mesh, theta_mesh, phi_mesh as nx, ny, nz if they match f.shape.
+    # If they don't match, it implies a discrepancy or a need for interpolation
+    # from spherical to Cartesian, which is not handled here.
+    # We will use f.shape directly.
 
-    # 入力fを複素数型に変換（Numba関数で複素数演算を期待するため）
-    if not np.iscomplexobj(f):
-        f_complex = f.astype(np.complex128)
+    # Physical lengths of the box, derived from lattice parameters.
+    # Assuming an orthorhombic cell for simplicity, where a, b, c are Lx, Ly, Lz.
+    if len(settings.lattice_params) >= 3:
+        Lx = settings.lattice_params[0]
+        Ly = settings.lattice_params[1]
+        Lz = settings.lattice_params[2]
+        # Optional: Add a check for orthorhombic cell if necessary
+        # if len(settings.lattice_params) == 6 and \
+        #    not (np.isclose(settings.lattice_params[3], 90.0) and \
+        #         np.isclose(settings.lattice_params[4], 90.0) and \
+        #         np.isclose(settings.lattice_params[5], 90.0)):
+        #    # Handle non-orthorhombic cases or raise a warning/error
+        #    # For now, we proceed with a,b,c as Lx,Ly,Lz
+        #    pass
     else:
-        f_complex = f
-    
-    f_filtered_complex = _calculate_fourier_transform_parts(
-        f_complex, r_mesh, r_max, theta_mesh, phi_mesh, k_list_np
-    )
+        # Fallback or error handling if lattice_params are not sufficiently defined
+        raise ValueError("lattice_params must contain at least a, b, c values.")
 
+    # Perform FFT
+    F_k = np.fft.fftn(f)
+
+    # Create k-space grid
+    kx = np.fft.fftfreq(nx, d=Lx/nx) * 2 * np.pi
+    ky = np.fft.fftfreq(ny, d=Ly/ny) * 2 * np.pi
+    kz = np.fft.fftfreq(nz, d=Lz/nz) * 2 * np.pi
+
+    # Shift k-vectors for correct ordering if performing operations on shifted spectrum
+    # kx = np.fft.fftshift(kx)
+    # ky = np.fft.fftshift(ky)
+    # kz = np.fft.fftshift(kz)
+    # F_k_shifted = np.fft.fftshift(F_k) # And operate on F_k_shifted
+
+    Kx, Ky, Kz = np.meshgrid(kx, ky, kz, indexing='ij')
+
+    # Calculate k_squared for each point in k-space
+    # Note: if using fftshift, Kx, Ky, Kz should also be generated from shifted kx,ky,kz
+    # or the comparison needs to be careful about the order.
+    # Here, we work with the unshifted k-vectors and unshifted F_k.
+    K_squared = Kx**2 + Ky**2 + Kz**2
+
+    # Cutoff in k-space
+    k_cutoff = 2 * np.pi / settings.d_min
+    k_cutoff_squared = k_cutoff**2
+
+    # Apply truncation: set k-space components beyond k_cutoff to zero
+    F_k_filtered = F_k * (K_squared <= k_cutoff_squared)
+
+    # Perform inverse FFT
+    # If F_k_shifted was used, it should be unshifted before ifftn or use F_k directly
+    f_filtered_complex = np.fft.ifftn(F_k_filtered)
+
+    # Return the real part, as the original wavefunction f was real.
+    # Due to numerical precision, ifftn might return small imaginary parts.
     return f_filtered_complex.real

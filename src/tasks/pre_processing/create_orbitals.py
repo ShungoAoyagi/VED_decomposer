@@ -6,7 +6,7 @@ from src.utils import ErrorHandler, ErrorCode, ErrorLevel
 import os
 
 @task(name="create orbitals")
-def create_orbitals(z: np.ndarray[float], settings: Settings) -> tuple[np.ndarray[float], list[tuple[str, np.ndarray[tuple[int, int, int], float]]]]:
+def create_orbitals(z: np.ndarray[float], magnification: int, settings: Settings) -> tuple[np.ndarray[float], list[tuple[str, np.ndarray[tuple[int, int, int], float]]]]:
     """
     create initial orbitals
     """
@@ -28,7 +28,7 @@ def create_orbitals(z: np.ndarray[float], settings: Settings) -> tuple[np.ndarra
         n = int(orbital[0])
         l = orbital_magnetic_number[orbital[1]]
         for m in range(-l, l + 1):
-            z, psi_list = calc_orb(n, l, m, z[i], settings)
+            z, psi_list = calc_orb(n, l, m, z[i], magnification, settings)
             res.append((f"{n}{orbital[1]}{m}", psi_list))
             z_res.append(z)
 

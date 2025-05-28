@@ -135,7 +135,7 @@ def find_ncz_list(n_principal: int, ell: int, settings: Settings) -> tuple[bool,
                 
     return flag, n_list_out, c_list_out, z_list_out
 
-def calc_orb(n: int, ell: int, m: int, z_before: float, settings: Settings) -> tuple[float, np.ndarray]:
+def calc_orb(n: int, ell: int, m: int, z_before: float, magnification: int, settings: Settings) -> tuple[float, np.ndarray]:
     has_list, n_list, c_list, z_list = find_ncz_list(n, ell, settings)
     
     if len(n_list) != len(c_list) or len(n_list) != len(z_list):
@@ -146,27 +146,38 @@ def calc_orb(n: int, ell: int, m: int, z_before: float, settings: Settings) -> t
             ErrorLevel.ERROR
         )
     
-    r_mesh = settings.r_mesh
-    theta_mesh = settings.theta_mesh
-    phi_mesh = settings.phi_mesh
+    v = [v // magnification for v in settings.v]
+    lattice_params = settings.lattice_params
     r_max = settings.r_max
-    psi_list = np.zeros(r_mesh * theta_mesh * phi_mesh)
-    psi_list = np.reshape(psi_list, (r_mesh, theta_mesh, phi_mesh))
+    psi_list = np.zeros((v[0], v[1], v[2]))
     z = z_before
+    center_idx = settings.center_idx
 
     if not has_list and z == -1:
         z = calc_Zeff(n, settings)
 
-    for i in range(r_mesh):
-        for j in range(theta_mesh):
-            for k in range(phi_mesh):
-                theta = j * np.pi / theta_mesh
-                phi = k * 2 * np.pi / phi_mesh
+    for i in range(v[0]):
+        for j in range(v[1]):
+            for k in range(v[2]):
+                pos = np.array([(i - center_idx[0]) % v[0] / v[0] * lattice_params[0], (j - center_idx[1]) % v[1] / v[1] * lattice_params[1], (k - center_idx[2]) % v[2] / v[2] * lattice_params[2]])
+                r = np.linalg.norm(pos)
+                x = pos @ settings.basis_set[0]
+                y = pos @ settings.basis_set[1]
+                z = pos @ settings.basis_set[2]
+
+                if r > r_max:
+                    continue
+
+                theta = np.arccos(z / r)
+                phi = np.arctan2(y, x)
+                if phi < 0:
+                    phi += 2 * np.pi
+
                 sph = spherical_harmonics(ell, m, theta, phi)
                 if has_list:
-                    psi_list[i, j, k] = calc_R_with_STO(n_list, c_list, z_list, i, j, k, r_max) * sph
+                    psi_list[i, j, k] = calc_R_with_STO(n_list, c_list, z_list, r) * sph
                 else:
-                    psi_list[i, j, k] = calc_R_with_Zeff(n, ell, z, i, j, k, r_max) * sph
+                    psi_list[i, j, k] = calc_R_with_Zeff(n, ell, z, r) * sph
 
     return z, psi_list
 

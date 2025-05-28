@@ -24,12 +24,12 @@ class Settings:
     orb_idx_set: list[tuple[int, int]] = []
     spin: int = 0
     center: list[float] = [0, 0, 0]
-    r_mesh: int = 32 # mesh size of r
-    theta_mesh: int = 16 # mesh size of theta
-    phi_mesh: int = 32 # mesh size of phi
     r_max: float = 1.0 # Å unit
     basis_set: list[list[float]] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     d_min: float = 0.28 # Å unit
+    v: list[int] = [100, 100, 100] # mesh size of data
+    lattice_params: list[float] = [1.0, 1.0, 1.0, 90.0, 90.0, 90.0] # lattice parameters
+    center_idx: list[int] = [0, 0, 0] # index of center of data
 
     def convert_orbital_set(self) -> list[tuple[int, int]]:
         for orb in self.orbital_set:
@@ -158,6 +158,15 @@ class Settings:
                     for i in range(3):
                         for j in range(3):
                             self.basis_set[i][j] = self.basis_set[i][j] / np.linalg.norm(self.basis_set[i])
+    
+    def update_v(self, new_v: list[int]) -> None:
+        self.v = new_v
+
+    def update_lattice_params(self, new_lattice_params: list[float]) -> None:
+        self.lattice_params = new_lattice_params
+
+    def update_center_idx(self, new_center_idx: list[int]) -> None:
+        self.center_idx = new_center_idx
 
 @task(name="import settings")
 def import_settings(setting_path: str) -> Settings:
