@@ -4,7 +4,7 @@ from src.utils import ErrorHandler, ErrorCode, ErrorLevel
 from src.helpers import spherical_harmonics, Constants
 from scipy.special import genlaguerre
 
-def calc_orb(n: int, ell: int, m: int, output_path: str, settings: Settings) -> np.ndarray:
+def calc_orb(n: int, ell: int, m: int, settings: Settings) -> np.ndarray:
     n_list = [1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]
     c_list = [0.025695, 0.015270, -0.101936, 0.001471, -0.028579, 0.180214, 0.119361, -0.022991]
     z_list = [26.710310, 22.739409, 11.157920, 32.859200, 8.226529, 5.699980, 3.843176, 13.203642, 2.275507, 1.443056, 0.951968]

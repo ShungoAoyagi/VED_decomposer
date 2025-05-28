@@ -1,39 +1,20 @@
 from prefect import task
 import numpy as np
-from src.tasks.pre_processing.settings import Settings
+from src.tasks.pre_processing.settings import Settings, orbital_magnetic_number
+from src.helpers.calc_orb import calc_orb
 
 @task(name="create orbitals")
-def create_orbitals(settings: Settings) -> list[tuple[str, np.ndarray]]:
+def create_orbitals(settings: Settings) -> list[tuple[str, np.ndarray[tuple[int, int, int], float]]]:
     """
-    軌道を作成する。各軌道の値が入ったn×m行列が入る
+    create initial orbitals
     """
-    return [
-        ("3dz2", np.ndarray([
-            1, 1, 1
-        ])),
-        ("3dx2", np.ndarray([
-            1, 1, 1
-        ])),
-        ("3dxy", np.ndarray([
-            1, 1, 1
-        ])),
-        ("3dxz", np.ndarray([
-            1, 1, 1
-        ])),
-        ("3dyz", np.ndarray([
-            1, 1, 1
-        ])),
-        ("4s", np.ndarray([
-            1, 1, 1
-        ])),
-        ("4px", np.ndarray([
-            1, 1, 1
-        ])),
-        ("4py", np.ndarray([
-            1, 1, 1
-        ])),
-        ("4pz", np.ndarray([
-            1, 1, 1
-        ])),
-        
-    ]
+    orbital_set = settings.orbital_set
+
+    res = []
+    for orbital in orbital_set:
+        n = int(orbital[0])
+        l = orbital_magnetic_number[orbital[1]]
+        for m in range(-l, l + 1):
+            res.append((f"{n}{orbital[1]}{m}", calc_orb(n, l, m, settings)))
+
+    return res
