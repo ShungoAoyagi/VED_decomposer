@@ -63,11 +63,12 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
                         print(k, j, i)
                         raise Exception("Error")
                     count += 1
-
+    print(f"load_data DEBUG: tmp_data sample (first 10 of 0,0,:): {tmp_data[:10, 0, 0]._value if hasattr(tmp_data[0,0,:10], '_value') else tmp_data[0,0,:10]}")
     
     center = settings.center
     r_max = settings.r_max
     center_idx = [int(center[l] * v[l]) for l in range(3)]
+    print(f"load_data DEBUG: center_idx: {center_idx}")
     settings.update_center_idx(center_idx)
 
     data = np.zeros((v[0], v[1], v[2]))
@@ -79,8 +80,11 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
                 if r > r_max:
                     data[i, j, k] = 0
                 else:
-                    data[i, j, k] = tmp_data[(i - center_idx[0]) % v[0], (j - center_idx[1]) % v[1], (k - center_idx[2]) % v[2]]
+                    data[i, j, k] = tmp_data[i, j, k]
 
+    print(f"load_data DEBUG: data sample (first 10 of 0,0,:): {data[0,0,:10]._value if hasattr(data[0,0,:10], '_value') else data[0,0,:10]}")
+    print(f"load_data DEBUG: max of data: {np.max(data)}")
+    print(f"load_data DEBUG: min of data: {np.min(data)}")
     np.save("cache/data_modified.npy", data, allow_pickle=True)
 
     return data

@@ -17,19 +17,19 @@ def main():
     args = parser.parse_args()
     
     # パイプラインの実行
-    result = optimization_pipeline(
+    optimization_pipeline(
         data_path=args.data,
         config_path=args.config,
         output_dir=args.output_dir,
         run_name=args.run_name
     )
     
-    print("\n最終結果のサマリー:")
-    print(f"実行名: {result['run_name']}")
-    print(f"結果ディレクトリ: {result['run_dir']}")
-    print(f"最適化されたパラメータ: {result['optimized_parameters']}")
-    print(f"最終誤差: {result['final_error']}")
-    # print(f"詳細結果: {result['result_path']}")
+    # print("\n最終結果のサマリー:")
+    # print(f"実行名: {result['run_name']}")
+    # print(f"結果ディレクトリ: {result['run_dir']}")
+    # print(f"最適化されたパラメータ: {result['optimized_parameters']}")
+    # print(f"最終誤差: {result['final_error']}")
+    # # print(f"詳細結果: {result['result_path']}")
 
 if __name__ == "__main__":
     main()

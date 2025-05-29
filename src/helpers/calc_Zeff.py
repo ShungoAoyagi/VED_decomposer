@@ -15,11 +15,11 @@ weights = {
     2: 1.00           # n-2 以下は一律 1.00
 }
 
-def calc_Zeff(nsorb: int, settings: Settings):
+def calc_Zeff(nsorb: str, settings: Settings):
     n = int(nsorb[0])
     l = nsorb[1]                      # 's','p','d','f'
     if l not in 'sp':
-        raise ValueError('Slater 表は s/p 用の簡易版です')
+        raise ValueError(f'Slater 表は s/p 用の簡易版です。軌道: {nsorb}')
     s = 0.0
     for orb, n_e in conf.items():
         n_o = int(orb[0])

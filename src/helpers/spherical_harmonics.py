@@ -1,4 +1,5 @@
 import numpy as np
+import autograd.numpy as anp
 from src.utils import ErrorHandler, ErrorCode, ErrorLevel
 
 def spherical_harmonics(l: int, m: int, theta: float, phi: float) -> float:
@@ -29,61 +30,61 @@ def spherical_harmonics(l: int, m: int, theta: float, phi: float) -> float:
     # l=0: s orbital
     if l == 0:
         # m=0: s
-        return np.sqrt(1 / (4 * np.pi))
+        return anp.sqrt(1 / (4 * anp.pi))
     
     # l=1: p orbitals
     elif l == 1:
         if m == 0:
             # pz orbital: proportional to cos(θ)
-            return np.sqrt(3 / (4 * np.pi)) * np.cos(theta)
+            return anp.sqrt(3 / (4 * anp.pi)) * anp.cos(theta)
         elif m == 1:
             # px orbital: proportional to sin(θ)cos(φ)
-            return np.sqrt(3 / (4 * np.pi)) * np.sin(theta) * np.cos(phi)
+            return anp.sqrt(3 / (4 * anp.pi)) * anp.sin(theta) * anp.cos(phi)
         elif m == -1:
             # py orbital: proportional to sin(θ)sin(φ)
-            return np.sqrt(3 / (4 * np.pi)) * np.sin(theta) * np.sin(phi)
+            return anp.sqrt(3 / (4 * anp.pi)) * anp.sin(theta) * anp.sin(phi)
     
     # l=2: d orbitals
     elif l == 2:
         if m == 0:
             # dz² orbital: proportional to (3cos²(θ) - 1)
-            return np.sqrt(5 / (16 * np.pi)) * (3 * np.cos(theta)**2 - 1)
+            return anp.sqrt(5 / (16 * anp.pi)) * (3 * anp.cos(theta)**2 - 1)
         elif m == 1:
             # dzx orbital: proportional to sin(θ)cos(θ)cos(φ)
-            return np.sqrt(15 / (4 * np.pi)) * np.sin(theta) * np.cos(theta) * np.cos(phi)
+            return anp.sqrt(15 / (4 * anp.pi)) * anp.sin(theta) * anp.cos(theta) * anp.cos(phi)
         elif m == -1:
             # dyz orbital: proportional to sin(θ)cos(θ)sin(φ)
-            return np.sqrt(15 / (4 * np.pi)) * np.sin(theta) * np.cos(theta) * np.sin(phi)
+            return anp.sqrt(15 / (4 * anp.pi)) * anp.sin(theta) * anp.cos(theta) * anp.sin(phi)
         elif m == 2:
             # dx²-y² orbital: proportional to sin²(θ)cos(2φ)
-            return np.sqrt(15 / (16 * np.pi)) * np.sin(theta)**2 * np.cos(2 * phi)
+            return anp.sqrt(15 / (16 * anp.pi)) * anp.sin(theta)**2 * anp.cos(2 * phi)
         elif m == -2:
             # dxy orbital: proportional to sin²(θ)sin(2φ)
-            return np.sqrt(15 / (16 * np.pi)) * np.sin(theta)**2 * np.sin(2 * phi)
+            return anp.sqrt(15 / (16 * anp.pi)) * anp.sin(theta)**2 * anp.sin(2 * phi)
     
     # l=3: f orbitals (if needed)
     elif l == 3:
         if m == 0:
             # fz³ orbital: proportional to (5cos³(θ) - 3cos(θ))
-            return np.sqrt(7 / (16 * np.pi)) * (5 * np.cos(theta)**3 - 3 * np.cos(theta))
+            return anp.sqrt(7 / (16 * anp.pi)) * (5 * anp.cos(theta)**3 - 3 * anp.cos(theta))
         elif m == 1:
             # fz²x orbital: proportional to sin(θ)(5cos²(θ) - 1)cos(φ)
-            return np.sqrt(21 / (32 * np.pi)) * np.sin(theta) * (5 * np.cos(theta)**2 - 1) * np.cos(phi)
+            return anp.sqrt(21 / (32 * anp.pi)) * anp.sin(theta) * (5 * anp.cos(theta)**2 - 1) * anp.cos(phi)
         elif m == -1:
             # fz²y orbital: proportional to sin(θ)(5cos²(θ) - 1)sin(φ)
-            return np.sqrt(21 / (32 * np.pi)) * np.sin(theta) * (5 * np.cos(theta)**2 - 1) * np.sin(phi)
+            return anp.sqrt(21 / (32 * anp.pi)) * anp.sin(theta) * (5 * anp.cos(theta)**2 - 1) * anp.sin(phi)
         elif m == 2:
             # fzx²-zy² orbital: proportional to sin²(θ)cos(θ)cos(2φ)
-            return np.sqrt(105 / (16 * np.pi)) * np.sin(theta)**2 * np.cos(theta) * np.cos(2 * phi)
+            return anp.sqrt(105 / (16 * anp.pi)) * anp.sin(theta)**2 * anp.cos(theta) * anp.cos(2 * phi)
         elif m == -2:
             # fzxy orbital: proportional to sin²(θ)cos(θ)sin(2φ)
-            return np.sqrt(105 / (16 * np.pi)) * np.sin(theta)**2 * np.cos(theta) * np.sin(2 * phi)
+            return anp.sqrt(105 / (16 * anp.pi)) * anp.sin(theta)**2 * anp.cos(theta) * anp.sin(2 * phi)
         elif m == 3:
             # fx³-3xy² orbital: proportional to sin³(θ)cos(3φ)
-            return np.sqrt(35 / (32 * np.pi)) * np.sin(theta)**3 * np.cos(3 * phi)
+            return anp.sqrt(35 / (32 * anp.pi)) * anp.sin(theta)**3 * anp.cos(3 * phi)
         elif m == -3:
             # f3yx²-y³ orbital: proportional to sin³(θ)sin(3φ)
-            return np.sqrt(35 / (32 * np.pi)) * np.sin(theta)**3 * np.sin(3 * phi)
+            return anp.sqrt(35 / (32 * anp.pi)) * anp.sin(theta)**3 * anp.sin(3 * phi)
     
     # Return 0 for invalid l, m combinations
     return 0.0

@@ -10,6 +10,6 @@ settings = import_settings("data/input/settings.yaml")
 
 data = load_data("data/input/data.xplor", settings)
 
-# Zeffs = calculate_Zeff()
+# # Zeffs = calculate_Zeff()
 
-# print(Zeffs)
+# # print(Zeffs)
