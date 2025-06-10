@@ -10,9 +10,6 @@ def create_orbitals(z: np.ndarray[float], magnification: int, settings: Settings
     """
     create initial orbitals
     """
-    # キャッシュ機能を無効化（自動微分の連鎖が切れるため）
-    # if os.path.exists("cache/orbitals.npy"):
-    #     return np.load("cache/orbitals.npy")
         
     if len(z) != 0 and len(z) != len(settings.orbital_set):
         error_handler = ErrorHandler()
@@ -41,6 +38,4 @@ def create_orbitals(z: np.ndarray[float], magnification: int, settings: Settings
             if m == 0:
                 z_res.append(new_z)
 
-    # キャッシュの保存も無効化
-    # np.save("cache/orbitals.npy", (z_res, res))
     return z_res, res

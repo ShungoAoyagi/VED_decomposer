@@ -3,6 +3,8 @@ import numpy as np
 from src.tasks.pre_processing.settings import Settings
 import math
 import os
+import json
+from src.helpers.pick_partial_data import pick_partial_data
 
 @task(name="load data")
 def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, int], float]:
@@ -11,8 +13,30 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
     set data to 0 if r > r_max
     """
 
-    if os.path.exists("cache/data_modified.npy"):
-        return np.load("cache/data_modified.npy", allow_pickle=True)
+    if os.path.exists("cache/data_modified.npy") and os.path.exists("cache/log.json"):
+        log = json.load(open("cache/log.json", "r"))
+        center_idx = log["center_idx"]
+        lattice_params = log["lattice_params"]
+        v = log["v"]
+        # r_max = log["r_max"]
+        max_idx = log["max_idx"]
+        min_idx = log["min_idx"]
+        settings.update_center_idx(center_idx)
+        settings.update_lattice_params(lattice_params)
+        settings.update_v(v)
+        if max_idx is None or min_idx is None:
+            tmp_max_idx = np.zeros(3, dtype=int)
+            tmp_min_idx = np.zeros(3, dtype=int)
+            for i in range(3):
+                tmp_max_idx[i] = (center_idx[i] + int(settings.r_max * v[i] / lattice_params[i])) % v[i]
+                tmp_min_idx[i] = (center_idx[i] - int(settings.r_max * v[i] / lattice_params[i])) % v[i]
+            print(f"load_data DEBUG: tmp_max_idx: {tmp_max_idx}")
+            print(f"load_data DEBUG: tmp_min_idx: {tmp_min_idx}")
+            settings.update_max_idx(tmp_max_idx)
+            settings.update_min_idx(tmp_min_idx)
+
+        data = np.load("cache/data_modified.npy", allow_pickle=True)
+        return pick_partial_data(data, settings)
     v = np.zeros(3, dtype=int)
     v_max = np.zeros(3, dtype=int)
     v_min = np.zeros(3, dtype=int)
@@ -63,19 +87,31 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
                         print(k, j, i)
                         raise Exception("Error")
                     count += 1
-    print(f"load_data DEBUG: tmp_data sample (first 10 of 0,0,:): {tmp_data[:10, 0, 0]._value if hasattr(tmp_data[0,0,:10], '_value') else tmp_data[0,0,:10]}")
-    
     center = settings.center
     r_max = settings.r_max
     center_idx = [int(center[l] * v[l]) for l in range(3)]
     print(f"load_data DEBUG: center_idx: {center_idx}")
     settings.update_center_idx(center_idx)
 
+    tmp_max_idx = np.zeros(3, dtype=int)
+    tmp_min_idx = np.zeros(3, dtype=int)
+    for i in range(3):
+        tmp_max_idx[i] = (int((r_max / lattice_params[i] + center[i]) * v[i])) % v[i]
+        tmp_min_idx[i] = (int((-r_max / lattice_params[i] + center[i]) * v[i])) % v[i]
+    print(f"load_data DEBUG: tmp_max_idx: {tmp_max_idx}")
+    print(f"load_data DEBUG: tmp_min_idx: {tmp_min_idx}")
+    print(f"load_data DEBUG: r_max: {r_max}")
+    settings.update_max_idx(tmp_max_idx)
+    settings.update_min_idx(tmp_min_idx)
+
     data = np.zeros((v[0], v[1], v[2]))
     for i in range(v[0]):
         for j in range(v[1]):
             for k in range(v[2]):
-                pos = np.array([(i - center_idx[0]) % v[0] / v[0] * lattice_params[0], (j - center_idx[1]) % v[1] / v[1] * lattice_params[1], (k - center_idx[2]) % v[2] / v[2] * lattice_params[2]])
+                pos = np.array([((i - center_idx[0]) % v[0]) / v[0] * lattice_params[0], ((j - center_idx[1]) % v[1]) / v[1] * lattice_params[1], ((k - center_idx[2]) % v[2]) / v[2] * lattice_params[2]])
+                for l in range(3):
+                    if pos[l] > lattice_params[l] / 2:
+                        pos[l] -= lattice_params[l]
                 r = np.linalg.norm(pos)
                 if r > r_max:
                     data[i, j, k] = 0
@@ -85,6 +121,14 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
     print(f"load_data DEBUG: data sample (first 10 of 0,0,:): {data[0,0,:10]._value if hasattr(data[0,0,:10], '_value') else data[0,0,:10]}")
     print(f"load_data DEBUG: max of data: {np.max(data)}")
     print(f"load_data DEBUG: min of data: {np.min(data)}")
+    os.makedirs("cache", exist_ok=True)
     np.save("cache/data_modified.npy", data, allow_pickle=True)
+    log = {
+        "center_idx": center_idx,
+        "lattice_params": lattice_params,
+        "v": v,
+        "max_idx": settings.max_idx,
+        "min_idx": settings.min_idx,
+    }
 
-    return data
+    return pick_partial_data(data, settings)

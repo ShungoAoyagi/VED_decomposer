@@ -3,6 +3,7 @@ data/input/*
 data/output/*
 .venv/*
 cache/*
+output/*
 */__pycache__/*
 *.pyc
 *.pyo
@@ -10,3 +11,4 @@ cache/*
 *.pyw
 *.pyz
 *.pywz
+**/__pycache__

@@ -3,8 +3,9 @@ from prefect import flow
 import yaml
 import numpy as np
 
-from src.tasks.pre_processing import import_settings, load_data
+from src.tasks.pre_processing import import_settings, load_data, create_basis
 from src.tasks.data_processing.main_loop import main_loop
+from src.tasks.data_processing.main_loop_PSD import main_loop_cvxpy
 
 @flow(name="非線形最適化パイプライン")
 def optimization_pipeline(
@@ -31,8 +32,10 @@ def optimization_pipeline(
     # load data
     data = load_data(data_path, settings)
 
-    main_loop(data, settings)
-    
+    basis, zero_constraints = create_basis([], settings)
+
+    # main_loop(data, settings)
+    main_loop_cvxpy(basis, data, settings, initial_method="file", initial_scale=1.0, zero_constraints=zero_constraints)
     
     # 結果の保存
     # output_path = os.path.join(run_dir, "optimization_results.json")

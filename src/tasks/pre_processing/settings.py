@@ -30,6 +30,8 @@ class Settings:
     v: list[int] = [100, 100, 100] # mesh size of data
     lattice_params: list[float] = [1.0, 1.0, 1.0, 90.0, 90.0, 90.0] # lattice parameters
     center_idx: list[int] = [0, 0, 0] # index of center of data
+    max_idx: list[int] = [0, 0, 0] # max index of data
+    min_idx: list[int] = [0, 0, 0] # min index of data
 
     def convert_orbital_set(self) -> list[tuple[int, int]]:
         for orb in self.orbital_set:
@@ -97,35 +99,8 @@ class Settings:
                 )
                 self.center = [0, 0, 0]
         
-        if "r_mesh" in settings:
-            self.r_mesh = settings["r_mesh"]
-            if self.r_mesh > 100:
-                self.error_handler.handle(
-                    "The mesh size is too large. The large mesh size can cause memory overflow.",
-                    ErrorCode.VALIDATION,
-                    ErrorLevel.WARNING,
-                    {"available_fields": list(settings.keys())}
-                )
-        
-        if "theta_mesh" in settings:
-            self.theta_mesh = settings["theta_mesh"]
-            if self.theta_mesh > 100:
-                self.error_handler.handle(
-                    "The mesh size is too large. The large mesh size can cause memory overflow.",
-                    ErrorCode.VALIDATION,
-                    ErrorLevel.WARNING,
-                    {"available_fields": list(settings.keys())}
-                )
-        
-        if "phi_mesh" in settings:
-            self.phi_mesh = settings["phi_mesh"]
-            if self.phi_mesh > 100: 
-                self.error_handler.handle(
-                    "The mesh size is too large. The large mesh size can cause memory overflow.",
-                    ErrorCode.VALIDATION,
-                    ErrorLevel.WARNING,
-                    {"available_fields": list(settings.keys())}
-                )
+        if "r_max" in settings:
+            self.r_max = settings["r_max"]
 
         if "basis_set" in settings:
             self.basis_set = settings["basis_set"]
@@ -167,6 +142,12 @@ class Settings:
 
     def update_center_idx(self, new_center_idx: list[int]) -> None:
         self.center_idx = new_center_idx
+
+    def update_max_idx(self, new_max_idx: list[int]) -> None:
+        self.max_idx = new_max_idx
+    
+    def update_min_idx(self, new_min_idx: list[int]) -> None:
+        self.min_idx = new_min_idx
 
 @task(name="import settings")
 def import_settings(setting_path: str) -> Settings:

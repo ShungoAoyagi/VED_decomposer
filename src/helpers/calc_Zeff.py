@@ -1,10 +1,10 @@
 from src.tasks.pre_processing.settings import Settings
 
 # 簡易 Slater 計算（4p 電子を仮定した Fe の例）
-Z = 26                               # 原子番号
+Z = 27                               # 原子番号
 conf = {
     '1s': 2, '2s': 2, '2p': 6,
-    '3s': 2, '3p': 6, '3d': 6,
+    '3s': 2, '3p': 6, '3d': 7,
     '4s': 2, '4p': 1                # ← 該当電子を 1 としておく
 }
 
@@ -32,4 +32,5 @@ def calc_Zeff(nsorb: str, settings: Settings):
             s += weights[1] * n_e
         elif dn >= 2:
             s += weights[2] * n_e
+    print(f"Calculated Zeff: {Z - s}")
     return Z - s
