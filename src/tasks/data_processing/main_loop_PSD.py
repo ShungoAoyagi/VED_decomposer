@@ -5,7 +5,7 @@ import pandas as pd
 from src.tasks.pre_processing.settings import Settings
 from src.utils import ErrorHandler, ErrorCode, ErrorLevel
 from src.helpers.xplor_maker import make_xplor
-
+from src.helpers.save_partial_xplor import save_partial_xplor
 
 def load_previous_result(filepath: str) -> np.ndarray | None:
     """
@@ -157,7 +157,8 @@ def main_loop_cvxpy(
         
         # 重み行列のデフォルト設定
         if weights is None:
-            weights = np.ones(grid_shape)
+            weights = np.copy(np.power(target_data, 2))
+            # weights = np.ones(grid_shape)
         elif weights.shape != grid_shape:
             error_handler.handle(
                 f"重み行列の形状がtarget_dataと一致しません。weights: {weights.shape}, target: {grid_shape}",
@@ -181,14 +182,14 @@ def main_loop_cvxpy(
                     if error:
                         raise error
                 print(f"  制約 {i+1}: P[{row}, {col}] = 0")
-                
+    
                 # エルミート性の確保：P[i,j] = 0 なら P[j,i]* = 0 も自動追加
                 if row != col and (col, row) not in zero_constraints:
                     zero_constraints.append((col, row))
                     print(f"  エルミート性により追加: P[{col}, {row}] = 0")
         
         # CVXPYの変数定義（n×n の複素エルミート半正定値行列P）
-        P = cp.Variable((n, n), hermitian=True)
+        P = cp.Variable((n, n), hermitian=True, complex=False)
         
         # 初期値の設定
         if initial_P is None or initial_P.shape != (n, n):
@@ -240,35 +241,34 @@ def main_loop_cvxpy(
             print(f"  - フロベニウスノルム: {np.linalg.norm(initial_P, 'fro'):.6f}")
             print(f"  - 複素数対応: True")
         
-        # 目的関数のスケーリング改善
-        data_scale, weight_scale = improve_objective_scaling(target_data, weights)
+        # 目的関数: 重み付き相対誤差^2（直接計算）
+        # objective = Σ(weights * (rho - target)²) / Σ(weights * target²)
         
-        # スケーリングされた重みとターゲットデータ
-        scaled_weights = weights / weight_scale
-        scaled_target = target_data / data_scale
-        
-        # 差分計算用の変数
-        rho_diff = cp.Variable(grid_shape)
-        
-        # 制約条件: rho_diff = sum_{i,j} P[i,j] * basis[i,j,:,:,:] - scaled_target
-        constraints = []
-        
-        # rho_diffの計算制約を追加（スケーリング考慮）
+        # rho_exprを元のスケールで直接計算
         rho_expr = cp.Constant(np.zeros(grid_shape))
         for i in range(n):
             for j in range(n):
-                # basisもデータスケールで正規化
-                # 複素数行列の場合、実部のみを使用（密度は実数のため）
-                basis_scaled = basis[i, j, :, :, :] / data_scale
-                if np.iscomplexobj(basis_scaled):
-                    rho_expr += cp.real(P[i, j] * cp.Constant(basis_scaled))
+                if np.iscomplexobj(basis[i, j, :, :, :]):
+                    rho_expr += cp.real(P[i, j] * cp.Constant(basis[i, j, :, :, :]))
                 else:
-                    rho_expr += cp.real(P[i, j]) * cp.Constant(basis_scaled)
+                    rho_expr += cp.real(P[i, j]) * cp.Constant(basis[i, j, :, :, :])
         
-        constraints.append(rho_diff == rho_expr - cp.Constant(scaled_target))
+        # 残差（元のスケール）
+        residual = rho_expr - cp.Constant(target_data)
+        
+        # 重み付き二乗誤差
+        weighted_squared_error = cp.sum(cp.multiply(cp.Constant(weights), cp.square(residual)))
+        
+        # 重み付きターゲットノルムの二乗
+        weighted_target_norm_squared = np.sum(weights * target_data ** 2)
+        weighted_target_norm = np.sqrt(weighted_target_norm_squared)
+        print(f"Weighted target norm: {weighted_target_norm:.2e}")
+        
+        # 目的関数: 重み付き相対誤差の二乗
+        objective = weighted_squared_error / cp.Constant(weighted_target_norm_squared)
         
         # 半正定値制約
-        constraints.append(P >> 0)  # P は半正定値
+        constraints = [P >> 0]  # P は半正定値
         
         # ゼロ制約の追加
         if zero_constraints is not None:
@@ -276,20 +276,12 @@ def main_loop_cvxpy(
                 constraints.append(P[row, col] == 0)
             print(f"ゼロ制約を追加しました: {len(set(zero_constraints))}個のユニークな成分")
         
-        # 目的関数: スケーリングされた重み付き二乗誤差 + 正則化項
-        weighted_diff = cp.multiply(cp.Constant(np.sqrt(scaled_weights)), rho_diff)
-        
-        # スケール調整された目的関数（値を適度な範囲に保つ）
-        objective_scale = max(1.0, 1.0 / (data_scale * weight_scale))
-        objective = objective_scale * cp.sum_squares(weighted_diff) / cp.Constant(np.prod(grid_shape))
-        
         if regularization_lambda > 0:
-            # 正則化項もスケーリングを考慮
-            reg_scale = regularization_lambda * (data_scale ** 2)
+            # 正則化項（相対的なスケーリング）
+            reg_scale = regularization_lambda / weighted_target_norm_squared
             objective += reg_scale * cp.sum_squares(P)
         
-        print(f"Objective scaling factor: {objective_scale:.2e}")
-        print(f"Expected objective magnitude: O({objective_scale * data_scale * weight_scale:.1e})")
+        print(f"Expected objective magnitude (相対誤差^2): O(1e-2 to 1e-6)")
         
         # 問題の定義
         problem = cp.Problem(cp.Minimize(objective), constraints)
@@ -362,6 +354,9 @@ def main_loop_cvxpy(
             
             print(f"最適化完了。目的関数値: {objective.value}")
             
+            # 目的関数値と相対誤差の一致を検証
+            print(f"=== 目的関数値 vs 相対誤差の検証 ===")
+            
             # rhoの計算（スケーリングを考慮した逆変換）
             rho_output = np.zeros(grid_shape)
             for i in range(n):
@@ -373,12 +368,25 @@ def main_loop_cvxpy(
             os.makedirs("output", exist_ok=True)
             
             # rho_output.xplorの保存
-            make_xplor(rho_output, "output/rho_output.xplor", "rho_output", settings)
+            save_partial_xplor(rho_output, "output/rho_output.xplor", "rho_output", settings)
             print("rho_output.xplorを保存しました")
+
+            residual_output = rho_output - target_data
+            save_partial_xplor(residual_output, "output/residual_output.xplor", "residual_output", settings)
+            print("residual_output.xplorを保存しました")
             
             # 複素数行列の保存（実部と虚部を分けて保存）
             P_real = np.real(P_optimal)
             P_imag = np.imag(P_optimal)
+            P_abs = np.abs(P_optimal)
+            P_phase = np.angle(P_optimal)
+            for i in range(P_real.shape[0]):
+                for j in range(P_real.shape[1]):
+                    if P_abs[i, j] < 1e-10:
+                        P_real[i, j] = 0.0
+                        P_imag[i, j] = 0.0
+                        P_abs[i, j] = 0.0
+                        P_phase[i, j] = 0.0
             
             # 実部を保存
             P_real_df = pd.DataFrame(P_real)
@@ -392,6 +400,14 @@ def main_loop_cvxpy(
                 print("matrix_imag.csvを保存しました")
             else:
                 print("虚部はゼロのため、matrix_imag.csvは保存されませんでした")
+
+            P_abs_df = pd.DataFrame(P_abs)
+            P_abs_df.to_csv("output/matrix_abs.csv", index=False)
+            print("matrix_abs.csvを保存しました")
+
+            P_phase_df = pd.DataFrame(P_phase)
+            P_phase_df.to_csv("output/matrix_phase.csv", index=False)
+            print("matrix_phase.csvを保存しました")
             
             # 後方互換性のため、実部のみをmatrix.csvとしても保存
             P_real_df.to_csv("output/matrix.csv", index=False)
@@ -401,11 +417,84 @@ def main_loop_cvxpy(
             rms_error = np.sqrt(np.mean((rho_output - target_data) ** 2))
             relative_error = rms_error / np.sqrt(np.mean(target_data ** 2))
             print(f"RMS誤差: {rms_error:.6e}")
-            print(f"相対RMS誤差: {relative_error:.6e}")
+            print(f"相対RMS誤差 (通常): {relative_error:.6e}")
             
-            # スケーリングされた誤差も表示
-            scaled_residual = np.sqrt(np.mean(((rho_output / data_scale) - scaled_target) ** 2))
-            print(f"スケーリング後のRMS誤差: {scaled_residual:.6e}")
+            # 詳細な誤差解析
+            print(f"\n=== 詳細な誤差解析 ===")
+            
+            # 1. 通常のL2相対誤差
+            residual_norm = np.sqrt(np.sum((rho_output - target_data) ** 2))
+            target_norm = np.sqrt(np.sum(target_data ** 2))
+            l2_relative_error = residual_norm / target_norm
+            print(f"1. L2相対誤差: {l2_relative_error:.6e}")
+            
+            # 2. 重み付き相対誤差（現在の重み）
+            weighted_residual_norm = np.sqrt(np.sum(weights * (rho_output - target_data) ** 2))
+            weighted_target_norm_check = np.sqrt(np.sum(weights * target_data ** 2))
+            weighted_relative_error = weighted_residual_norm / weighted_target_norm_check
+            print(f"2. 重み付き相対誤差 (weights=target_data): {weighted_relative_error:.6e}")
+            
+            # 3. 目的関数値の平方根
+            theoretical_weighted_relative_error = np.sqrt(objective.value)
+            print(f"3. 理論値 (√objective): {theoretical_weighted_relative_error:.6e}")
+            
+            # 4. 比率の確認
+            print(f"\n=== 比率確認 ===")
+            print(f"重み付き/理論値: {weighted_relative_error / theoretical_weighted_relative_error:.6f}")
+            print(f"L2/理論値: {l2_relative_error / theoretical_weighted_relative_error:.6f}")
+            print(f"通常RMS/理論値: {relative_error / theoretical_weighted_relative_error:.6f}")
+            
+            # 5. 重みの特性を確認
+            print(f"\n=== 重みの特性 ===")
+            print(f"重みの範囲: [{np.min(weights):.2e}, {np.max(weights):.2e}]")
+            print(f"重みの平均: {np.mean(weights):.2e}")
+            print(f"target_dataの範囲: [{np.min(target_data):.2e}, {np.max(target_data):.2e}]")
+            print(f"weights ≈ target_data?: {np.allclose(weights, target_data)}")
+            print(f"weights ≈ target_data²?: {np.allclose(weights, target_data ** 2)}")
+            
+            # 6. 重みと誤差の分布解析
+            print(f"\n=== 重みと誤差の分布解析 ===")
+            residual_squared = (rho_output - target_data) ** 2
+            
+            # 重み付き成分と通常成分の比較
+            weighted_components = weights * residual_squared
+            total_weighted_error = np.sum(weighted_components)
+            total_unweighted_error = np.sum(residual_squared)
+            
+            print(f"総重み付き誤差: {total_weighted_error:.6e}")
+            print(f"総通常誤差: {total_unweighted_error:.6e}")
+            print(f"比率 (通常/重み付き): {total_unweighted_error / total_weighted_error:.3f}")
+            
+            # 重みと誤差の相関
+            correlation = np.corrcoef(weights.flatten(), residual_squared.flatten())[0, 1]
+            print(f"重みと残差²の相関係数: {correlation:.3f}")
+            
+            # 高重み領域と低重み領域の誤差
+            high_weight_mask = weights > np.median(weights)
+            low_weight_mask = weights <= np.median(weights)
+            
+            high_weight_error = np.mean(residual_squared[high_weight_mask])
+            low_weight_error = np.mean(residual_squared[low_weight_mask])
+            
+            print(f"高重み領域の平均誤差²: {high_weight_error:.6e}")
+            print(f"低重み領域の平均誤差²: {low_weight_error:.6e}")
+            print(f"比率 (低重み/高重み): {low_weight_error / high_weight_error:.3f}")
+            
+            # 理論的予測の検証
+            weighted_mean_target_squared = np.sum(weights * target_data ** 2) / np.sum(weights)
+            unweighted_mean_target_squared = np.mean(target_data ** 2)
+            
+            print(f"\n=== 理論的分析 ===")
+            print(f"重み付き平均 target²: {weighted_mean_target_squared:.6e}")
+            print(f"通常平均 target²: {unweighted_mean_target_squared:.6e}")
+            
+            # 予測比率
+            predicted_ratio = np.sqrt(unweighted_mean_target_squared / weighted_mean_target_squared)
+            actual_ratio = l2_relative_error / weighted_relative_error
+            
+            print(f"予測比率 (L2/weighted): {predicted_ratio:.3f}")
+            print(f"実際比率 (L2/weighted): {actual_ratio:.3f}")
+            print(f"予測精度: {abs(predicted_ratio - actual_ratio) / actual_ratio * 100:.1f}%")
             
             # 収束診断情報の追加
             if hasattr(problem, 'solver_stats') and problem.solver_stats is not None:

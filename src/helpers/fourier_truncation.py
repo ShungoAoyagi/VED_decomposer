@@ -327,6 +327,7 @@ def fourier_truncation(f_in, settings: Settings) -> anp.ndarray:
     
     高速化された実装とautograd互換性を両立
     """
+    # return f_in
     # autogradの配列かチェック
     if isinstance(f_in, (anp.ndarray, anp.numpy_boxes.ArrayBox)):
         # autograd配列の場合は一度NumPy配列に変換して高速処理

@@ -277,7 +277,7 @@ def manual_clip(x: float, min_val: float, max_val: float) -> float:
 def calc_orb_vectorized_numba_chunked(
     v: tuple, 
     lattice_params: np.ndarray, 
-    center_idx: np.ndarray, 
+    center_idx: np.ndarray[float], 
     basis_set: np.ndarray,
     n: int, 
     ell: int, 
@@ -372,7 +372,7 @@ def calc_spherical_harmonics_fast(ell: int, m: int, theta: float, phi: float) ->
     elif ell == 1:  # p orbitals
         if m == -1:
             # Y_1^(-1) = sqrt(3/(8π)) * sin(θ) * e^(-iφ) = sqrt(3/(8π)) * sin(θ) * (cos(φ) - i*sin(φ))
-            normalization = 0.4886025119029199  # sqrt(3/(4π))
+            normalization = 0.34549414947134  # sqrt(3/(8π))
             real_part = normalization * sin_theta * np.cos(phi)
             imag_part = -normalization * sin_theta * np.sin(phi)
             return (real_part, imag_part)
@@ -381,7 +381,7 @@ def calc_spherical_harmonics_fast(ell: int, m: int, theta: float, phi: float) ->
             return (0.4886025119029199 * cos_theta, 0.0)
         elif m == 1:
             # Y_1^1 = -sqrt(3/(8π)) * sin(θ) * e^(iφ) = -sqrt(3/(8π)) * sin(θ) * (cos(φ) + i*sin(φ))
-            normalization = -0.4886025119029199  # -sqrt(3/(4π))
+            normalization = -0.34549414947134  # -sqrt(3/(8π))
             real_part = normalization * sin_theta * np.cos(phi)
             imag_part = normalization * sin_theta * np.sin(phi)
             return (real_part, imag_part)
@@ -392,7 +392,7 @@ def calc_spherical_harmonics_fast(ell: int, m: int, theta: float, phi: float) ->
         
         if m == -2:
             # Y_2^(-2) = sqrt(15/(32π)) * sin²(θ) * e^(-2iφ)
-            normalization = 0.5462742152960396  # sqrt(15/(16π))
+            normalization = 0.3862742020219  # sqrt(15/(32π))
             cos_2phi = np.cos(2*phi)
             sin_2phi = np.sin(2*phi)
             real_part = normalization * sin2_theta * cos_2phi
@@ -400,7 +400,7 @@ def calc_spherical_harmonics_fast(ell: int, m: int, theta: float, phi: float) ->
             return (real_part, imag_part)
         elif m == -1:
             # Y_2^(-1) = sqrt(15/(8π)) * sin(θ)*cos(θ) * e^(-iφ)
-            normalization = 1.0925484305920792  # sqrt(15/(4π))
+            normalization = 0.77254840404638  # sqrt(15/(4π))
             real_part = normalization * sin_theta * cos_theta * np.cos(phi)
             imag_part = -normalization * sin_theta * cos_theta * np.sin(phi)
             return (real_part, imag_part)
@@ -409,13 +409,13 @@ def calc_spherical_harmonics_fast(ell: int, m: int, theta: float, phi: float) ->
             return (0.31539156525252005 * (3*cos2_theta - 1), 0.0)
         elif m == 1:
             # Y_2^1 = -sqrt(15/(8π)) * sin(θ)*cos(θ) * e^(iφ)
-            normalization = -1.0925484305920792  # -sqrt(15/(4π))
+            normalization = -0.77254840404638  # -sqrt(15/(4π))
             real_part = normalization * sin_theta * cos_theta * np.cos(phi)
             imag_part = normalization * sin_theta * cos_theta * np.sin(phi)
             return (real_part, imag_part)
         elif m == 2:
             # Y_2^2 = sqrt(15/(32π)) * sin²(θ) * e^(2iφ)
-            normalization = 0.5462742152960396  # sqrt(15/(16π))
+            normalization = 0.3862742020219  # sqrt(15/(32π))
             cos_2phi = np.cos(2*phi)
             sin_2phi = np.sin(2*phi)
             real_part = normalization * sin2_theta * cos_2phi

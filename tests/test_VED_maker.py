@@ -36,6 +36,7 @@ for i in range(v[0]):
         for k in range(v[2]):
             # rho_list[i, j, k] = anp.sum(anp.abs(psi_list[0][i, j, k] + psi_list[1][i, j, k]) ** 2 + anp.abs(psi_list[3][i, j, k] + 1j * psi_list[4][i, j, k]) ** 2)
             rho_list[i, j, k] = anp.sum(anp.abs(psi_list[1][i, j, k]) ** 2)
+            
             # rho_list[i,j,k] = psi_list[2][i,j,k]
 
 print(psi_list[2].max())

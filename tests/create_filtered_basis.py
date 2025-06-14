@@ -34,7 +34,7 @@ for i in range(basis[1][1].shape[0]):
             # rho = anp.real(basis[1, 4, i, j, k]) + anp.real(basis[4, 1, i, j, k])
             rho = anp.real(basis[0,0, i, j, k]) + anp.real(basis[3,3,i,j,k]) + anp.real(basis[8, 8, i, j, k])
             rho += anp.real(basis[0,3, i, j, k] + basis[3,0, i, j, k])
-            rho += anp.real(anp.exp(1j * anp.pi / 3) * basis[0,8, i, j, k] + anp.exp(-1j * anp.pi / 3) * basis[8,0, i, j, k])
+            rho += anp.real(anp.exp(1j * anp.pi / 4) * basis[0,8, i, j, k] + anp.exp(-1j * anp.pi / 4) * basis[8,0, i, j, k])
             # rho = anp.real(basis[8,8, i, j, k])
             # rho = anp.real(basis[1,1, i, j, k]) + anp.real(basis[4,4, i, j, k]) + anp.real(basis[1,4, i, j, k]) + anp.real(basis[4,1, i, j, k]) + anp.real(basis[2,2,i,j,k])
 

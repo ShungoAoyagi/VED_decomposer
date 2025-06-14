@@ -1,6 +1,7 @@
 dist/*
 data/input/*
 data/output/*
+data/CoSi/*
 .venv/*
 cache/*
 output/*

@@ -70,6 +70,7 @@ class XplorFile:
                             print(tmp)
                             print(count)
                             print(k, j, i)
+                            print(self.path)
                             raise Exception("Error")
                         count += 1
             

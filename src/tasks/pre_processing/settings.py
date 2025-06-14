@@ -131,8 +131,9 @@ class Settings:
                             self.basis_set[i][j] = float(self.basis_set[i][j])
 
                     for i in range(3):
+                        norm = np.linalg.norm(self.basis_set[i])
                         for j in range(3):
-                            self.basis_set[i][j] = self.basis_set[i][j] / np.linalg.norm(self.basis_set[i])
+                            self.basis_set[i][j] = self.basis_set[i][j] / norm
     
     def update_v(self, new_v: list[int]) -> None:
         self.v = new_v

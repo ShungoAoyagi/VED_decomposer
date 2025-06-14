@@ -51,14 +51,14 @@ def custom_scientific_notation(value: float | complex, max_digits: int = 6) -> s
     
     return result
 
-def make_xplor(data: np.ndarray, output_path: str, output_name: str, settings: Settings) -> None:
+def save_partial_xplor(data: np.ndarray, output_path: str, output_name: str, settings: Settings) -> None:
     """
     make xplor file
     """
     if os.path.exists(output_path):
         os.remove(output_path)
     
-    length = data.shape
+    length = settings.v
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -79,7 +79,10 @@ def make_xplor(data: np.ndarray, output_path: str, output_name: str, settings: S
                 f.write(f" {i} \n ")
             for j in range(length[1]):
                 for k in range(length[0]):
-                    f.write(f" {custom_scientific_notation(data[k, j, i])} ")
+                    if i >= settings.min_idx[2] and (i < settings.max_idx[2] or settings.max_idx[2] < settings.min_idx[2]) and j >= settings.min_idx[1] and (j < settings.max_idx[1] or settings.max_idx[1] < settings.min_idx[1]) and k >= settings.min_idx[0] and (k < settings.max_idx[0] or settings.max_idx[0] < settings.min_idx[0]):
+                        f.write(f" {custom_scientific_notation(data[k - settings.min_idx[0], j - settings.min_idx[1], i - settings.min_idx[2]])} ")
+                    else:
+                        f.write(f" {custom_scientific_notation(0.0)} ")
                     if count % 5 == 4:
                         f.write("\n ")
                     count += 1
