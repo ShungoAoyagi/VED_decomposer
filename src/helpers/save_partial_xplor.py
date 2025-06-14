@@ -86,4 +86,6 @@ def save_partial_xplor(data: np.ndarray, output_path: str, output_name: str, set
                     if count % 5 == 4:
                         f.write("\n ")
                     count += 1
+            if count % 5 != 0:
+                f.write("\n ")
     return

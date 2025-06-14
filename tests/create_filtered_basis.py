@@ -16,7 +16,7 @@ from src.helpers.xplor_maker import make_xplor
 from src.helpers.fourier_truncation import fourier_truncation
 
 
-settings = import_settings("data/input_sample/settings.yaml")
+settings = import_settings("data/input/settings.yaml")
 data = load_data("data/input/data.xplor", settings)
 # magnification = 2
 magnification = 1

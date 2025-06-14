@@ -133,11 +133,17 @@ def find_ncz_list(n_principal: int, ell: int, settings: Settings) -> tuple[bool,
     # Corrected n_list search logic: Search backwards from the orbital block
     n_list_found = False
     n_header_line_idx = -1
-    # Search backwards from just before orbital_block_start_idx up to the start of the current ion block
-    for i in range(orbital_block_start_idx - 1, selected_ion_block_start_idx - 1, -1):
-        if lines[i].strip().startswith("n "):
-            n_header_line_idx = i
-            break # Found the closest preceding "n " header
+    after_orbital_start_idx = False
+    if lines[orbital_block_start_idx + 1].strip().startswith("n "):
+        n_header_line_idx = orbital_block_start_idx + 1
+        n_list_found = True
+        after_orbital_start_idx = True
+    else:
+        # Search backwards from just before orbital_block_start_idx up to the start of the current ion block
+        for i in range(orbital_block_start_idx - 1, selected_ion_block_start_idx - 1, -1):
+            if lines[i].strip().startswith("n "):
+                n_header_line_idx = i
+                break # Found the closest preceding "n " header
 
     if n_header_line_idx != -1:
         temp_n_list = []
@@ -151,7 +157,7 @@ def find_ncz_list(n_principal: int, ell: int, settings: Settings) -> tuple[bool,
 
         # Parse continuation lines (indented lines immediately following the n_header_line_idx)
         current_n_val_line_idx = n_header_line_idx + 1
-        while (current_n_val_line_idx < orbital_block_start_idx and # Must be before the orbital itself
+        while ((current_n_val_line_idx < orbital_block_start_idx or after_orbital_start_idx) and # Must be before the orbital itself
                current_n_val_line_idx < selected_ion_block_end_idx and # Must be within the ion block
                lines[current_n_val_line_idx].startswith(" ")):
             

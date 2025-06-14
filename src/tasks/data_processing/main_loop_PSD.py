@@ -189,12 +189,14 @@ def main_loop_cvxpy(
                     print(f"  エルミート性により追加: P[{col}, {row}] = 0")
         
         # CVXPYの変数定義（n×n の複素エルミート半正定値行列P）
-        P = cp.Variable((n, n), hermitian=True, complex=False)
+        P = cp.Variable((n, n), hermitian=True)
         
         # 初期値の設定
         if initial_P is None or initial_P.shape != (n, n):
             if initial_method == "identity":
                 initial_P = initial_scale * np.eye(n, dtype=complex)
+                initial_P[0, 3] = 1.0j
+                initial_P[3, 0] = -1.0j
             elif initial_method == "random":
                 # 複素数の低ランク行列を生成してエルミート化
                 A_real = np.random.randn(n, min(n, 4))
@@ -374,6 +376,10 @@ def main_loop_cvxpy(
             residual_output = rho_output - target_data
             save_partial_xplor(residual_output, "output/residual_output.xplor", "residual_output", settings)
             print("residual_output.xplorを保存しました")
+
+            normalized_residual_output = np.divide(residual_output, target_data, where=target_data!=0)
+            save_partial_xplor(normalized_residual_output, "output/normalized_residual_output.xplor", "normalized_residual_output", settings)
+            print("normalized_residual_output.xplorを保存しました")
             
             # 複素数行列の保存（実部と虚部を分けて保存）
             P_real = np.real(P_optimal)

@@ -82,6 +82,30 @@ class XplorFile:
                 # 複素数が含まれる場合はそのまま
                 self.data = temp_data
 
+    def get_value(self, x: float, y: float, z: float) -> float:
+        """
+        Get value at trilinear interpolation of (x, y, z)
+        """
+        # 整数部分と小数部分を分離
+        ix, fx = int(x), x - int(x)
+        iy, fy = int(y), y - int(y)
+        iz, fz = int(z), z - int(z)
+        
+        # 各軸の重み
+        wx = np.array([1-fx, fx])
+        wy = np.array([1-fy, fy])
+        wz = np.array([1-fz, fz])
+        
+        # 三線形補間
+        result = 0.0
+        for i in range(2):
+            for j in range(2):
+                for k in range(2):
+                    weight = wx[i] * wy[j] * wz[k]
+                    result += weight * self.data[(ix+i) % self.v[0], (iy+j) % self.v[1], (iz+k) % self.v[2]]
+        
+        return result
+
 def load_xplor(path: str) -> XplorFile:
     """
     Load xplor file

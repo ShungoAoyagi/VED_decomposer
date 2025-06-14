@@ -83,4 +83,6 @@ def make_xplor(data: np.ndarray, output_path: str, output_name: str, settings: S
                     if count % 5 == 4:
                         f.write("\n ")
                     count += 1
+            if count % 5 != 0:
+                f.write("\n ")
     return
