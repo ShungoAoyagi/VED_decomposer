@@ -129,6 +129,9 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
         "v": v,
         "max_idx": settings.max_idx,
         "min_idx": settings.min_idx,
+        "r_max": r_max,
     }
+    # with open("cache/log.json", "w") as f:
+    #     json.dump(log, f)
 
     return pick_partial_data(data, settings)

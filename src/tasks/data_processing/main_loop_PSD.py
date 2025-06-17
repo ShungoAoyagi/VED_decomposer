@@ -90,7 +90,10 @@ def main_loop_cvxpy(
     initial_scale: float = 1.0,
     target_mse: float = 1e-3,  # 目標MSE（これ以下なら十分）
     target_relative_error: float = 5e-2,  # 目標相対誤差（これ以下なら十分）
-    zero_constraints: list[tuple[int, int]] = None  # ゼロ制約: [(i,j), ...] のリスト
+    zero_constraints: list[tuple[int, int]] = None,  # ゼロ制約: [(i,j), ...] のリスト
+    real_constraints: bool = False,  # 実数制約
+    optimize_constant_offset: bool = True,  # 定数オフセットを最適化変数として扱うか
+    initial_constant_offset: float = 0.5  # 定数オフセットの初期値
 ) -> None:
     """
     CVXPYを用いて半正定値制約付きの最適化問題を解く
@@ -108,6 +111,9 @@ def main_loop_cvxpy(
         target_relative_error: 目標相対誤差（これ以下なら十分）
         zero_constraints: 0に固定する成分のリスト [(i,j), ...] 
                          例: [(0,3), (3,0), (1,4), (4,1)] で特定の混成を禁止
+        real_constraints: 実数制約を適用するかどうか
+        optimize_constant_offset: 定数オフセットを最適化変数として扱うかどうか（デフォルトはTrue）
+        initial_constant_offset: 定数オフセットの初期値（デフォルトは0.5）
     
     Returns:
         None（結果はファイルに保存される）
@@ -157,7 +163,7 @@ def main_loop_cvxpy(
         
         # 重み行列のデフォルト設定
         if weights is None:
-            weights = np.copy(np.power(target_data, 2))
+            weights = np.copy(np.power(target_data, 4))
             # weights = np.ones(grid_shape)
         elif weights.shape != grid_shape:
             error_handler.handle(
@@ -168,6 +174,8 @@ def main_loop_cvxpy(
             weights = np.ones(grid_shape)
         
         print(f"最適化開始: n={n}, grid_shape={grid_shape}")
+        print(f"パラメータ: regularization_lambda={regularization_lambda}")
+        print(f"定数オフセット最適化: {optimize_constant_offset}, 初期値: {initial_constant_offset}")
         
         # ゼロ制約の検証とログ出力
         if zero_constraints is not None:
@@ -190,6 +198,12 @@ def main_loop_cvxpy(
         
         # CVXPYの変数定義（n×n の複素エルミート半正定値行列P）
         P = cp.Variable((n, n), hermitian=True)
+        
+        # 定数オフセットを最適化変数として定義（必要に応じて）
+        if optimize_constant_offset:
+            constant_offset = cp.Variable(name="constant_offset")
+        else:
+            constant_offset = initial_constant_offset
         
         # 初期値の設定
         if initial_P is None or initial_P.shape != (n, n):
@@ -243,6 +257,11 @@ def main_loop_cvxpy(
             print(f"  - フロベニウスノルム: {np.linalg.norm(initial_P, 'fro'):.6f}")
             print(f"  - 複素数対応: True")
         
+        # 定数オフセット変数の初期値設定
+        if optimize_constant_offset:
+            constant_offset.value = initial_constant_offset
+            print(f"定数オフセット初期値: {initial_constant_offset}")
+        
         # 目的関数: 重み付き相対誤差^2（直接計算）
         # objective = Σ(weights * (rho - target)²) / Σ(weights * target²)
         
@@ -256,7 +275,7 @@ def main_loop_cvxpy(
                     rho_expr += cp.real(P[i, j]) * cp.Constant(basis[i, j, :, :, :])
         
         # 残差（元のスケール）
-        residual = rho_expr - cp.Constant(target_data)
+        residual = rho_expr - cp.Constant(target_data) - constant_offset * cp.Constant(np.ones(grid_shape))
         
         # 重み付き二乗誤差
         weighted_squared_error = cp.sum(cp.multiply(cp.Constant(weights), cp.square(residual)))
@@ -277,6 +296,15 @@ def main_loop_cvxpy(
             for row, col in zero_constraints:
                 constraints.append(P[row, col] == 0)
             print(f"ゼロ制約を追加しました: {len(set(zero_constraints))}個のユニークな成分")
+
+        # 実数制約
+        if real_constraints:
+            # 複素エルミート行列Pの虚部を0に制約（実数行列にする）
+            for i in range(n):
+                for j in range(n):
+                    if i != j:  # 非対角成分の虚部を0に制約
+                        constraints.append(cp.imag(P[i, j]) == 0)
+            print(f"実数制約を追加しました: {n*(n-1)}個の虚部成分を0に固定")
         
         if regularization_lambda > 0:
             # 正則化項（相対的なスケーリング）
@@ -354,13 +382,21 @@ def main_loop_cvxpy(
                 if error:
                     raise error
             
-            print(f"最適化完了。目的関数値: {objective.value}")
+            # 最適化された定数オフセット値の取得
+            if optimize_constant_offset:
+                optimal_constant_offset = constant_offset.value
+                print(f"最適化完了。目的関数値: {objective.value}")
+                print(f"最適化された定数オフセット: {optimal_constant_offset:.6f} (初期値: {initial_constant_offset})")
+            else:
+                optimal_constant_offset = initial_constant_offset
+                print(f"最適化完了。目的関数値: {objective.value}")
+                print(f"固定定数オフセット: {optimal_constant_offset}")
             
             # 目的関数値と相対誤差の一致を検証
             print(f"=== 目的関数値 vs 相対誤差の検証 ===")
             
             # rhoの計算（スケーリングを考慮した逆変換）
-            rho_output = np.zeros(grid_shape)
+            rho_output = np.zeros(grid_shape) - optimal_constant_offset * np.ones(grid_shape)
             for i in range(n):
                 for j in range(n):
                     # 元のスケールに戻す
@@ -418,6 +454,19 @@ def main_loop_cvxpy(
             # 後方互換性のため、実部のみをmatrix.csvとしても保存
             P_real_df.to_csv("output/matrix.csv", index=False)
             print("後方互換性のため、実部をmatrix.csvとしても保存しました")
+            
+            # 最適化された定数オフセット値をJSONファイルに保存
+            import json
+            optimization_results = {
+                "optimal_constant_offset": float(optimal_constant_offset),
+                "initial_constant_offset": float(initial_constant_offset),
+                "was_optimized": bool(optimize_constant_offset),
+                "objective_value": float(objective.value),
+                "optimization_status": problem.status
+            }
+            with open("output/optimization_results.json", "w") as f:
+                json.dump(optimization_results, f, indent=2)
+            print("optimization_results.jsonを保存しました")
             
             # 統計情報の出力（元のスケールで評価）
             rms_error = np.sqrt(np.mean((rho_output - target_data) ** 2))
@@ -726,6 +775,21 @@ def run_practical_optimization(
        zero_constraints=zero_constraints
    )
 
+5. 定数オフセットを最適化:
+   # 自動最適化（デフォルト）
+   result = run_practical_optimization(
+       basis, target_data, settings,
+       optimize_constant_offset=True,  # デフォルト
+       initial_constant_offset=0.5
+   )
+   
+   # 固定値を使用
+   result = run_practical_optimization(
+       basis, target_data, settings,
+       optimize_constant_offset=False,
+       initial_constant_offset=0.3
+   )
+
 結果の使用（複素数エルミート行列対応）:
 - matrix_real.csv: 最適化結果の実部
 - matrix_imag.csv: 最適化結果の虚部（存在する場合のみ）
@@ -860,7 +924,9 @@ zero_constraints = generate_symmetry_based_constraints(
 result = run_practical_optimization(
     basis, target_data, settings,
     zero_constraints=zero_constraints,
-    regularization_lambda=1e-6
+    regularization_lambda=1e-6,
+    optimize_constant_offset=True,  # 定数オフセットを自動最適化
+    initial_constant_offset=0.3     # 初期値を0.3に設定
 )
 """
     

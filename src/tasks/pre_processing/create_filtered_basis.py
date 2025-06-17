@@ -86,7 +86,7 @@ def create_basis(z: np.ndarray[float], settings: Settings) -> tuple[np.ndarray[t
             for k in range(settings.v[0]):
                 for l in range(settings.v[1]):
                     for m in range(settings.v[2]):
-                        _basis[k, l, m] = orbital_data[i][k, l, m] * orbital_data[j][k, l, m].conj()
+                        _basis[k, l, m] = orbital_data[i][k, l, m].conj() * orbital_data[j][k, l, m]
             print("_basis.shape: ", _basis.shape)
             raw_file_path = f"cache/orbitals/{settings.atom_name}_n{n_1}l{l_1}m{m_1}_n{n_2}l{l_2}m{m_2}_raw.xplor"
             make_xplor(_basis, raw_file_path, f"{settings.atom_name}_n{n_1}l{l_1}m{m_1}_n{n_2}l{l_2}m{m_2}_raw", settings)
