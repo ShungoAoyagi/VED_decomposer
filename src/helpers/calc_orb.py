@@ -12,6 +12,7 @@ import os
 import hashlib
 import pickle
 from functools import lru_cache
+from src.helpers.constant import Constants
 
 # Numbaのインポートを追加
 try:
@@ -283,7 +284,7 @@ def manual_clip(x: float, min_val: float, max_val: float) -> float:
 def calc_orb_vectorized_numba_chunked(
     v: tuple, 
     lattice_params: np.ndarray, 
-    center_idx: np.ndarray[float], 
+    center_idx: np.ndarray, 
     basis_set: np.ndarray,
     n: int, 
     ell: int, 
@@ -293,7 +294,8 @@ def calc_orb_vectorized_numba_chunked(
     c_list: np.ndarray, 
     z_list: np.ndarray,
     z_eff: float,
-    chunk_size: int = 50
+    chunk_size: int = 50,
+    magnification: float = 1.0
 ) -> np.ndarray:
     """
     Sequential chunked version of orbital calculation with complex support (no parallel processing).
@@ -345,12 +347,13 @@ def calc_orb_vectorized_numba_chunked(
                     phi = np.arctan2(y, x)
                     if phi < 0:
                         phi += 2 * np.pi
-                    
+    
                     # 球面調和関数の計算（複素数対応）
                     sph_real, sph_imag = calc_spherical_harmonics_fast(ell, m, theta, phi)
                     
                     # 動径関数の計算
                     if has_list:
+                        r = r / magnification
                         radial = calc_R_with_STO_fast(n_list, c_list, z_list, r, a0)
                     else:
                         radial = calc_R_with_Zeff_fast(n, ell, z_eff, r, a0)
@@ -547,7 +550,7 @@ def calc_R_with_Zeff_fast(n: int, ell: int, z: float, r: float, a0: float) -> fl
     
     return normalization * np.power(rho, ell) * np.exp(exponent) * L
 
-def generate_orbital_cache_key(n: int, ell: int, m: int, z_before: float, magnification: int, settings: Settings) -> str:
+def generate_orbital_cache_key(n: int, ell: int, m: int, z_before: float, magnification: float, settings: Settings) -> str:
     """
     Generate a unique cache key for orbital calculations.
     """
@@ -603,7 +606,7 @@ def save_orbital_to_cache(cache_key: str, z_eff: float, psi_list: np.ndarray) ->
     except Exception as e:
         print(f"Warning: Failed to save cache {cache_key[:8]}...: {e}")
 
-def calc_orb_optimized(n: int, ell: int, m: int, z_before: float, magnification: int, settings: Settings) -> tuple[float, np.ndarray]:
+def calc_orb_optimized(n: int, ell: int, m: int, z_before: float, magnification: float, settings: Settings) -> tuple[float, np.ndarray]:
     """
     Optimized version of calc_orb using Numba JIT or NumPy vectorization with caching.
     """
@@ -626,7 +629,7 @@ def calc_orb_optimized(n: int, ell: int, m: int, z_before: float, magnification:
             ErrorLevel.ERROR
         )
     
-    v = tuple(v_i // magnification for v_i in settings.v)
+    v = settings.v
     lattice_params = np.array(settings.lattice_params, dtype=np.float64)
     z_eff = z_before
     center = settings.center
@@ -654,7 +657,8 @@ def calc_orb_optimized(n: int, ell: int, m: int, z_before: float, magnification:
         np.array(c_list, dtype=np.float64) if has_list else np.array([1.0], dtype=np.float64),
         np.array(z_list, dtype=np.float64) if has_list else np.array([z_eff], dtype=np.float64),
         z_eff,
-        chunk_size
+        chunk_size,
+        magnification
     )
     
     # キャッシュに保存
@@ -666,7 +670,7 @@ def calc_orb_optimized(n: int, ell: int, m: int, z_before: float, magnification:
     return z_eff, psi_list
 
 # 既存のcalc_orb関数を高速化版で置き換え
-def calc_orb(n: int, ell: int, m: int, z_before: float, magnification: int, settings: Settings) -> tuple[float, np.ndarray]:
+def calc_orb(n: int, ell: int, m: int, z_before: float, magnification: float, settings: Settings) -> tuple[float, np.ndarray]:
     """
     Main calc_orb function that automatically uses the fastest available implementation.
     """

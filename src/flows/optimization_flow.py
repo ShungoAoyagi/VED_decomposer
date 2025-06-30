@@ -32,10 +32,10 @@ def optimization_pipeline(
     # load data
     data = load_data(data_path, settings)
 
-    basis, zero_constraints = create_basis([], settings)
+    basis, zero_constraints = create_basis([], 0.999, settings)
 
     # main_loop(data, settings)
-    main_loop_cvxpy(basis, data, settings, initial_method="identity", initial_scale=1.0, zero_constraints=zero_constraints, real_constraints=False)
+    main_loop_cvxpy(basis, data, settings, initial_method="identity", initial_scale=1.0, zero_constraints=zero_constraints, real_constraints=False, initial_constant_offset=0.0)
     
     # 結果の保存
     # output_path = os.path.join(run_dir, "optimization_results.json")

@@ -94,7 +94,8 @@ def compute_oam_tmp(orb1: tuple, orb2: tuple, settings: Settings) -> np.ndarray:
     return tmp
 
 def create_OAM_basis(P: np.ndarray[tuple[int,int], complex], settings: Settings) -> np.ndarray[tuple[int,int,int], tuple[float, float, float]]:
-    res = np.zeros((settings.v[0], settings.v[1], settings.v[2], 3), dtype=np.complex128)
+    res = np.zeros((10, 10, 10, 3), dtype=float)
+    # res = np.zeros((settings.v[0], settings.v[1], settings.v[2], 3), dtype=np.complex128)
     orb_set = settings.orbital_set
     orb_set_list = []
     for orb in orb_set:

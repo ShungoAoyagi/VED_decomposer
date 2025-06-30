@@ -163,7 +163,7 @@ def main_loop_cvxpy(
         
         # 重み行列のデフォルト設定
         if weights is None:
-            weights = np.copy(np.power(target_data, 4))
+            weights = np.copy(np.power(target_data, 2))
             # weights = np.ones(grid_shape)
         elif weights.shape != grid_shape:
             error_handler.handle(
@@ -209,8 +209,8 @@ def main_loop_cvxpy(
         if initial_P is None or initial_P.shape != (n, n):
             if initial_method == "identity":
                 initial_P = initial_scale * np.eye(n, dtype=complex)
-                initial_P[0, 3] = 1.0j
-                initial_P[3, 0] = -1.0j
+                initial_P[2, 5] = 1.0j
+                initial_P[5, 2] = -1.0j
             elif initial_method == "random":
                 # 複素数の低ランク行列を生成してエルミート化
                 A_real = np.random.randn(n, min(n, 4))
@@ -290,6 +290,11 @@ def main_loop_cvxpy(
         
         # 半正定値制約
         constraints = [P >> 0]  # P は半正定値
+        
+        # 定数オフセットの制約（絶対値1.0まで）
+        if optimize_constant_offset:
+            constraints.append(cp.abs(constant_offset) <= 1.0)
+            print("定数オフセットに制約 |constant_offset| <= 1.0 を追加しました")
         
         # ゼロ制約の追加
         if zero_constraints is not None:

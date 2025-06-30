@@ -24,6 +24,7 @@ class Settings:
     orb_idx_set: list[tuple[int, int]] = []
     spin: int = 0
     center: list[float] = [0, 0, 0]
+    r_min: float = 0.0 # Å unit
     r_max: float = 1.0 # Å unit
     basis_set: list[list[float]] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     d_min: float = 0.28 # Å unit
@@ -32,6 +33,7 @@ class Settings:
     center_idx: list[int] = [0, 0, 0] # index of center of data
     max_idx: list[int] = [0, 0, 0] # max index of data
     min_idx: list[int] = [0, 0, 0] # min index of data
+    fit_orbital: str = "3d"
 
     def convert_orbital_set(self) -> list[tuple[int, int]]:
         for orb in self.orbital_set:
@@ -99,8 +101,14 @@ class Settings:
                 )
                 self.center = [0, 0, 0]
         
+        if "r_min" in settings:
+            self.r_min = settings["r_min"]
+
         if "r_max" in settings:
             self.r_max = settings["r_max"]
+
+        if "fit_orbital" in settings:
+            self.fit_orbital = settings["fit_orbital"]
 
         if "basis_set" in settings:
             self.basis_set = settings["basis_set"]

@@ -19,7 +19,7 @@ def can_hybridize_by_symmetry(m1: int, m2: int) -> bool:
     return False
 
 @task(name="Create basis")
-def create_basis(z: np.ndarray[float], settings: Settings) -> tuple[np.ndarray[tuple[int, int], np.ndarray[tuple[int, int, int], complex] | None], np.ndarray[tuple[int, int], bool]]:
+def create_basis(z: np.ndarray[float], magnification: float, settings: Settings) -> tuple[np.ndarray[tuple[int, int], np.ndarray[tuple[int, int, int], complex] | None], np.ndarray[tuple[int, int], bool]]:
     """
     Create basis
     """
@@ -76,10 +76,10 @@ def create_basis(z: np.ndarray[float], settings: Settings) -> tuple[np.ndarray[t
                     print(f"The xplor file {filtered_file_path} does not exist or the v values are not equal.")
             
             if i not in orbital_data:
-                _, psi_list = calc_orb(n_1, l_1, m_1, z_list[i], 1, settings)
+                _, psi_list = calc_orb(n_1, l_1, m_1, z_list[i], magnification, settings)
                 orbital_data[i] = psi_list
             if j not in orbital_data:
-                _, psi_list = calc_orb(n_2, l_2, m_2, z_list[j], 1, settings)
+                _, psi_list = calc_orb(n_2, l_2, m_2, z_list[j], magnification, settings)
                 orbital_data[j] = psi_list
             # _basis = np.dot(orbital_data[i], orbital_data[j].conj())
             _basis = np.zeros((settings.v[0], settings.v[1], settings.v[2]), dtype=np.complex128)

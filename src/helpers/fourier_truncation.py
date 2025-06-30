@@ -56,9 +56,9 @@ def precompute_fft_frequencies(nx: int, ny: int, nz: int, Lx: float, Ly: float, 
     """
     FFT周波数を事前計算してキャッシュする（高速化）
     """
-    kx_vals = np.fft.fftfreq(nx, d=Lx/nx) * 2 * np.pi
-    ky_vals = np.fft.fftfreq(ny, d=Ly/ny) * 2 * np.pi
-    kz_vals = np.fft.fftfreq(nz, d=Lz/nz) * 2 * np.pi
+    kx_vals = np.fft.fftfreq(nx, d=1/nx) * 2 * np.pi / Lx
+    ky_vals = np.fft.fftfreq(ny, d=1/ny) * 2 * np.pi / Ly
+    kz_vals = np.fft.fftfreq(nz, d=1/nz) * 2 * np.pi / Lz
     return kx_vals, ky_vals, kz_vals
 
 @jit(nopython=True, cache=True)
@@ -67,7 +67,7 @@ def create_filter_mask_numba(nx: int, ny: int, nz: int, kx_vals: np.ndarray, ky_
     Numba JITでフィルターマスクを高速作成
     """
     filter_mask = np.zeros((nx, ny, nz), dtype=np.float64)
-    
+    k_z_max = 0.0
     for i in range(nx):
         kx = kx_vals[i]
         kx_sq = kx * kx
@@ -79,7 +79,9 @@ def create_filter_mask_numba(nx: int, ny: int, nz: int, kx_vals: np.ndarray, ky_
                 K_squared = kx_sq + ky_sq + kz * kz
                 if K_squared <= k_cutoff_sq:
                     filter_mask[i, j, k] = 1.0
-                
+                    if kz > k_z_max:
+                        k_z_max = float(kz)
+    print("k_z_max:", k_z_max)
     return filter_mask
 
 def create_filter_mask_vectorized(nx: int, ny: int, nz: int, kx_vals: np.ndarray, ky_vals: np.ndarray, kz_vals: np.ndarray, k_cutoff_sq: float) -> np.ndarray:
@@ -92,13 +94,13 @@ def create_filter_mask_vectorized(nx: int, ny: int, nz: int, kx_vals: np.ndarray
     return (K_squared <= k_cutoff_sq).astype(np.float64)
 
 @jit(nopython=True, cache=True)
-def create_spatial_mask_numba(nx: int, ny: int, nz: int, center_idx: tuple, Lx: float, Ly: float, Lz: float, r_max: float) -> np.ndarray:
+def create_spatial_mask_numba(nx: int, ny: int, nz: int, center_idx: tuple, Lx: float, Ly: float, Lz: float, r_max: float, r_min: float) -> np.ndarray:
     """
     Numba JITで空間マスクを高速作成
     """
     r_mask = np.zeros((nx, ny, nz), dtype=np.float64)
     r_max_sq = r_max * r_max
-    
+    r_min_sq = r_min * r_min
     for i in range(nx):
         dx = i - center_idx[0]
         # 最小イメージ規約
@@ -129,12 +131,12 @@ def create_spatial_mask_numba(nx: int, ny: int, nz: int, center_idx: tuple, Lx: 
                 z_pos = dz / nz * Lz
                 
                 r_sq = x_pos_sq + y_pos_sq + z_pos * z_pos
-                if r_sq <= r_max_sq:
+                if r_sq <= r_max_sq and r_sq >= r_min_sq:
                     r_mask[i, j, k] = 1.0
                     
     return r_mask
 
-def create_spatial_mask_vectorized(nx: int, ny: int, nz: int, center_idx: tuple, Lx: float, Ly: float, Lz: float, r_max: float) -> np.ndarray:
+def create_spatial_mask_vectorized(nx: int, ny: int, nz: int, center_idx: tuple, Lx: float, Ly: float, Lz: float, r_max: float, r_min: float) -> np.ndarray:
     """
     NumPyベクトル化で空間マスクを作成
     """
@@ -164,7 +166,7 @@ def create_spatial_mask_vectorized(nx: int, ny: int, nz: int, center_idx: tuple,
     
     # 半径とマスク
     r_grid = np.sqrt(x_pos**2 + y_pos**2 + z_pos**2)
-    return (r_grid <= r_max).astype(np.float64)
+    return (r_grid <= r_max and r_grid >= r_min).astype(np.float64)
 
 def generate_fourier_cache_key(shape: tuple, Lx: float, Ly: float, Lz: float, d_min: float, r_max: float, center: tuple) -> str:
     """
@@ -241,6 +243,7 @@ def fourier_truncation_optimized(f_in: np.ndarray, settings: Settings) -> np.nda
     if not cache_success:
         print(f"Computing fourier masks for shape {f_in.shape}...")
         
+        print(f"settings: d_min: {settings.d_min}, nx: {nx}, ny: {ny}, nz: {nz}, Lx: {Lx}, Ly: {Ly}, Lz: {Lz}")
         # FFT周波数の事前計算
         kx_vals, ky_vals, kz_vals = precompute_fft_frequencies(nx, ny, nz, Lx, Ly, Lz)
         k_cutoff_sq = (2 * np.pi / settings.d_min)**2
@@ -256,10 +259,10 @@ def fourier_truncation_optimized(f_in: np.ndarray, settings: Settings) -> np.nda
         # 空間マスクの作成
         if NUMBA_AVAILABLE:
             print("Creating spatial mask with Numba...")
-            spatial_mask = create_spatial_mask_numba(nx, ny, nz, center_idx, Lx, Ly, Lz, settings.r_max)
+            spatial_mask = create_spatial_mask_numba(nx, ny, nz, center_idx, Lx, Ly, Lz, settings.r_max, settings.r_min)
         else:
             print("Creating spatial mask with NumPy...")
-            spatial_mask = create_spatial_mask_vectorized(nx, ny, nz, center_idx, Lx, Ly, Lz, settings.r_max)
+            spatial_mask = create_spatial_mask_vectorized(nx, ny, nz, center_idx, Lx, Ly, Lz, settings.r_max, settings.r_min)
         
         # キャッシュに保存
         save_fourier_masks_to_cache(cache_key, filter_mask, spatial_mask)
@@ -277,6 +280,7 @@ def fourier_truncation_optimized(f_in: np.ndarray, settings: Settings) -> np.nda
     # フィルター適用
     print("Applying frequency filter...")
     F_k_filtered = F_k * filter_mask
+    # F_k_filtered = F_k
     
     # 高速逆FFT
     print("Performing inverse FFT...")
@@ -329,6 +333,7 @@ def fourier_truncation(f_in, settings: Settings) -> anp.ndarray:
     """
     # return f_in
     # autogradの配列かチェック
+    # settings.d_min = 0.3
     if isinstance(f_in, (anp.ndarray, anp.numpy_boxes.ArrayBox)):
         # autograd配列の場合は一度NumPy配列に変換して高速処理
         f_numpy = np.array(f_in)

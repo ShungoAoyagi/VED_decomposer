@@ -79,8 +79,8 @@ def save_partial_xplor(data: np.ndarray, output_path: str, output_name: str, set
                 f.write(f" {i} \n ")
             for j in range(length[1]):
                 for k in range(length[0]):
-                    if i >= settings.min_idx[2] and (i < settings.max_idx[2] or settings.max_idx[2] < settings.min_idx[2]) and j >= settings.min_idx[1] and (j < settings.max_idx[1] or settings.max_idx[1] < settings.min_idx[1]) and k >= settings.min_idx[0] and (k < settings.max_idx[0] or settings.max_idx[0] < settings.min_idx[0]):
-                        f.write(f" {custom_scientific_notation(data[k - settings.min_idx[0], j - settings.min_idx[1], i - settings.min_idx[2]])} ")
+                    if (settings.min_idx[2] < i < settings.max_idx[2] or (settings.min_idx[2] > settings.max_idx[2] and (i < settings.max_idx[2] or i > settings.min_idx[2]))) and (settings.min_idx[1] < j < settings.max_idx[1] or (settings.min_idx[1] > settings.max_idx[1] and (j < settings.max_idx[1] or j > settings.min_idx[1]))) and (settings.min_idx[0] < k < settings.max_idx[0] or (settings.min_idx[0] > settings.max_idx[0] and (k < settings.max_idx[0] or k > settings.min_idx[0]))):
+                        f.write(f" {custom_scientific_notation(data[(k - settings.min_idx[0]) % settings.v[0], (j - settings.min_idx[1]) % settings.v[1], (i - settings.min_idx[2]) % settings.v[2]])} ")
                     else:
                         f.write(f" {custom_scientific_notation(0.0)} ")
                     if count % 5 == 4:

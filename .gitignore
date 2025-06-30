@@ -2,6 +2,7 @@ dist/*
 data/input/*
 data/output/*
 data/CoSi/*
+data/FeSi/*
 .venv/*
 cache/*
 output/*

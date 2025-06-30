@@ -94,9 +94,9 @@ def calc_orb_derive_core(n: int, ell: int, m: int, v: tuple, center: tuple, latt
                     phi = np.arctan2(y, x)
                 
                 if flag:
-                    R_r = calc_R_with_STO_fast(n_list, c_list, z_list, r, 0.529177249)  # Constants.a0_angstrom
+                    R_r = calc_R_with_STO_fast(n_list, c_list, z_list, r, Constants.a0_angstrom)
                 else:
-                    R_r = calc_R_with_Zeff_fast(n, ell, -1, r, 0.529177249)
+                    R_r = calc_R_with_Zeff_fast(n, ell, -1, r, Constants.a0_angstrom)
 
                 f_r = 0.0 + 0.0j
                 f_theta = -R_r * phi_derive_sph(ell, m, theta, phi)

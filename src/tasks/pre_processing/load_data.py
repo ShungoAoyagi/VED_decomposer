@@ -88,6 +88,7 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
                         raise Exception("Error")
                     count += 1
     center = settings.center
+    r_min = settings.r_min
     r_max = settings.r_max
     center_idx = [int(center[l] * v[l]) for l in range(3)]
     print(f"load_data DEBUG: center_idx: {center_idx}")
@@ -113,7 +114,7 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
                     if pos[l] > lattice_params[l] / 2:
                         pos[l] -= lattice_params[l]
                 r = np.linalg.norm(pos)
-                if r > r_max:
+                if r > r_max or r < r_min:
                     data[i, j, k] = 0
                 else:
                     data[i, j, k] = tmp_data[i, j, k]
@@ -129,6 +130,7 @@ def load_data(data_path: str, settings: Settings) -> np.ndarray[tuple[int, int, 
         "v": v,
         "max_idx": settings.max_idx,
         "min_idx": settings.min_idx,
+        "r_min": r_min,
         "r_max": r_max,
     }
     # with open("cache/log.json", "w") as f:
